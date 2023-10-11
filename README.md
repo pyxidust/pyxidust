@@ -9,9 +9,10 @@ Fully-vaccinated for COVID-19
 - ArcGIS | GIT | Linux | Markdown | OOP | RDMB
 
 **Experience**
-Senior GIS Specialist, Fluor-BWXT/SOCCo, Piketon, OH (2017-Present)
+Senior GIS Specialist, Fluor-BWXT, Piketon, OH (2017-Present)
 - Full-time programmer since 2021 at the US Department of Energy Portsmouth Site
-- Developed the 'Mamba' Python/GIS library to automate major workflows: drone/gps/lidar processing, map requests, project catalog/provision, sample data requests/database updates, volume calculations
+- Developed the 'Mamba' Python/GIS library to automate major workflows: drone/gps/lidar processing,
+  map requests, project catalog/provision, sample data requests/database updates, volume calculations
 - Developed the sitewide GIS portal using CSS/HTML/JavaScript
 - Documentation, user guides, software QA
 
@@ -19,8 +20,7 @@ Senior GIS Specialist, Fluor-BWXT/SOCCo, Piketon, OH (2017-Present)
 - Creator/maintainer of the 'Pyxidust' Python package (https://pypi.org/project/pyxidust/)
 
 **Work History (GIS)**
-- Senior GIS Specialist, Southern Ohio Cleanup Company LLC (2024-????)
-- Senior GIS Specialist, Fluor-BWXT Portsmouth LLC (2017-2024)
+- Senior GIS Specialist, Fluor-BWXT Portsmouth LLC (2017-Present)
 - GIS Specialist, Muskingum Conservancy District (2014-2017)
 - GIS Technician, Gus Perdikakis Associates (2012-2014)
 - Volunteer, Nature Conservancy (2016-2019)
