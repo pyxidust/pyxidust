@@ -5,6 +5,7 @@
 - ArcGIS | GIT | Linux | Markdown | OOP | RDMB
 
 **Experience**
+
 Senior GIS Specialist, Fluor-BWXT, Piketon, OH (2017-Present)
 - Full-time programmer since 2021 at the US Department of Energy Portsmouth Site
 - Developed the 'Mamba' Python/GIS library to automate major workflows: drone/gps/lidar processing,
