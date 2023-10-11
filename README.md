@@ -1,4 +1,4 @@
-### Skills
+# Skills
 - Python specialist (3+ years experience)
 - C | CSS | Elixir | HTML | JavaScript | SQL
 - ArcPy | Django | FastAPI | Pandas
