@@ -8,8 +8,9 @@
 
 Senior GIS Specialist, Fluor-BWXT, Piketon, OH (2017-Present)
 - Full-time programmer since 2021 at the US Department of Energy Portsmouth Site
-- Developed the 'Mamba' Python/GIS library to automate major workflows: drone/gps/lidar processing,
-  map requests, project catalog/provision, sample data requests/database updates, volume calculations
+- Developed the 'Mamba' Python/GIS library to automate major workflows:
+  drone/gps/lidar processing, map requests, project catalog/provision,
+  sample data requests/database updates, volume calculations
 - Developed the sitewide GIS portal using CSS/HTML/JavaScript
 - Documentation, user guides, software QA
 
