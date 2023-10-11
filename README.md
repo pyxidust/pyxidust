@@ -2,6 +2,14 @@
 ### Geoprocessing/lidar/project tools for ArcGIS PRO.
 <br>
 
+### [1. Dependencies](#dependencies)
+### [2. Arc Module](#arc-module)
+### [3. Lidar Module](#lidar-module)
+### [4. Projects Module](#projects-module)
+### [5. Utils Module](#utils-module)
+### [6. Change Log](#change-log)
+<br>
+
 # Dependencies
 ### Python 3.11+
 ### The Pyxidust 'Arc' module requires Microsoft Windows, an ESRI ArcGIS Pro
@@ -416,4 +424,15 @@ function with the same arguments
 
 **0.0.1** (11/10/2022):
 - Initial release and birth of Pyxidust!
+<br>
+
+# 🔮TEMPLATE
+### **Function/Class Name**
+### Description
+### Description
+### Description
+```py
+# signature
+...
+```
 <br>
