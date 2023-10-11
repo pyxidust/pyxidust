@@ -1,7 +1,3 @@
-**Gabriel Aaron Peck**
-Fully-vaccinated for COVID-19
-614.636.4251 | pyxidust@pm.me | https://github.com/pyxidust
-
 **Skills**
 - Python specialist (3+ years experience)
 - C | CSS | Elixir | HTML | JavaScript | SQL
