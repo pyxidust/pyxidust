@@ -4,7 +4,7 @@
 - ArcPy | Django | FastAPI | Pandas
 - ArcGIS | GIT | Linux | Markdown | OOP | RDMB
 
-**Experience**
+# Experience
 
 Senior GIS Specialist, Fluor-BWXT, Piketon, OH (2017-Present)
 - Full-time programmer since 2021 at the US Department of Energy Portsmouth Site
@@ -13,22 +13,22 @@ Senior GIS Specialist, Fluor-BWXT, Piketon, OH (2017-Present)
 - Developed the sitewide GIS portal using CSS/HTML/JavaScript
 - Documentation, user guides, software QA
 
-**Projects**
-- Creator/maintainer of the 'Pyxidust' Python package (https://pypi.org/project/pyxidust/)
+# Projects
+- Creator/maintainer of the 'Pyxidust' Python package
 
-**Work History (GIS)**
-- Senior GIS Specialist, Fluor-BWXT Portsmouth LLC (2017-Present)
-- GIS Specialist, Muskingum Conservancy District (2014-2017)
-- GIS Technician, Gus Perdikakis Associates (2012-2014)
-- Volunteer, Nature Conservancy (2016-2019)
-- Volunteer, URISA GISCorps (2010-2013)
-- Volunteer, Arc of Appalachia (2010-2012)
-- Volunteer, Miami University (2010)
-- Intern, City of Lebanon OH (2009-2010)
-- Intern, Arc of Appalachia (2009)
+# Work History (GIS)
+- Senior GIS Specialist, Fluor-BWXT Portsmouth LLC
+- GIS Specialist, Muskingum Conservancy District
+- GIS Technician, Gus Perdikakis Associates
+- Volunteer, Nature Conservancy
+- Volunteer, URISA GISCorps
+- Volunteer, Arc of Appalachia
+- Volunteer, Miami University
+- Intern, City of Lebanon OH
+- Intern, Arc of Appalachia
 
-**Education**
-- BA Geography, Miami University, Oxford, OH (2009)
+# Education
+- BA Geography, Miami University, Oxford, OH
 
-**Awards**
-- Presidential Volunteer Service Award (2012)
+# Awards
+- Presidential Volunteer Service Award
