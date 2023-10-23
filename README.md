@@ -1,8 +1,8 @@
 # Skills
-- Python specialist (3+ years experience)
+- Python specialist
 - C | CSS | Elixir | HTML | JavaScript | SQL
-- ArcPy | Django | FastAPI | Pandas
-- ArcGIS | GIT | Linux | Markdown | OOP | RDMB
+- GIT | Linux | Markdown | OOP | RDMB
+- GIS | Photography | Records Management | Technical Writing
 
 # Experience
 Senior GIS Specialist, Fluor-BWXT, Piketon, OH (2017-Present)
