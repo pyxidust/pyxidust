@@ -20,6 +20,8 @@
 # pyxidust.projects.validate_project()
 
 # standalone functions (callable by user)
+# pyxidust.projects.clone_project()
+# pyxidust.projects.delete_project()
 # pyxidust.projects.import_map()
 
 ###############################################################################
@@ -207,7 +209,95 @@ def validate_project(description, name, template):
 
 ############################# STANDALONE FUNCTIONS ############################
 
-# NEEDS TESTED IN ARCGIS PRO 3.0
+# FUNCTIONALITY NOT AVAILABLE IN ARCGIS PRO
+# def clone_project(old_project, new_project):
+#     """Reproduces an ArcGIS PRO project. Useful when the contents of a project
+#     are needed for further work, but the project will not open due to memory
+#     limitations (large project with many maps/layouts/layers).
+#     -----------
+#     PARAMETERS:
+#     -----------
+#     old_project:
+#         ArcGIS project object that will not open or is unresponsive
+#     new_project:
+#         ArcGIS project object to replace the old_project
+#     ------
+#     USAGE:
+#     ------
+#     import arcpy
+#     project_old = arcpy.mp.ArcGISProject(path)
+#     project_new = arcpy.mp.ArcGISProject(path)
+#     clone_project(old_project=project_old, new_project=project_new)
+#     """
+
+#     import arcpy
+#     from pyxidust.arc import add_data
+
+#     project = old_project
+#     layouts = project.listLayouts()
+#     layer_names = []
+#     info = {}
+    
+#     # assign unique id to each group of maps/layouts/layers
+#     for identifier, layout in enumerate(layouts):
+#         # get map name tied to a certain layout
+#         mapframe = layout.listElements('MAPFRAME_ELEMENT')[0]
+#         map_name = mapframe.map.name
+#         # get layer objects
+#         map_ = project.listMaps(map_name)[0]
+#         layers = map_.listLayers()
+#         # position of layers from top (0) to bottom
+#         layer_order = 0
+#         # filter layers and append position/name/source
+#         for layer in layers:
+#             if layer.isFeatureLayer == True or layer.isRasterLayer == True:
+#                 layer_names.append((layer_order, layer.name, layer.dataSource))
+#             # next layer
+#             layer_order += 1
+#         # write info to project dictionary
+#         info[identifier] = (map_name, layout.name, layer_names)
+
+#     # recreate old project
+#     project = new_project
+
+#     # unpack/loop project info
+#     for identifier, (map_name, layout_name, layers) in info.items():
+#         # create new map in new project
+#         project.createMap(name=map_name, map_type='MAP')
+#         # create new layout in new project
+#         ...
+#         # unpack/loop layer info
+#         for layer_order, layer_name, layer_source in layers:
+#             # add data from disk
+#             add_data(pro_obj=project, map_name=map_name, option='1',
+#                 layers=layer_source, lyr_idx=layer_order, gdb=None)
+
+def delete_project(directory):
+    """Deletes .aprx file and associated data for workflows that do not require
+    a pro project.
+    -----------
+    PARAMETERS:
+    -----------
+    directory: str
+        path to a folder containing a pro project structure
+    ------
+    USAGE:
+    ------
+    delete_project(directory=r'\\')
+    """
+    
+    import os
+    import shutil
+
+    for root, folders, files in os.walk(directory):
+        for folder in folders:
+            if folder == '.backups' or folder == 'Index':
+                shutil.rmtree(os.path.join(root, folder))
+        for file in files:
+            if file.ednswith('.aprx'):
+                os.remove(os.path.join(root, file))
+
+# NEEDS TESTED IN ARCGIS PRO 3.1
 def import_map(pro_obj, mxd, serial_file, serial_number=None):
     """Converts a layout in a .mxd file to the ArcGIS PRO format and assigns
     a serial number to the new map/layout.

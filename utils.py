@@ -63,7 +63,6 @@ def change_name(extension, directory, serial_file):
 
 ###############################################################################
 
-# needs tested...
 def clear_folder(directory, option):
     """Removes all files or files/folders in a directory.
     -----------
@@ -89,7 +88,6 @@ def clear_folder(directory, option):
 
 ###############################################################################
 
-# needs tested...
 def collapse_path(path):
     """Corrects the placement of slashes in WindowsOS network paths.
     -----------
@@ -105,7 +103,6 @@ def collapse_path(path):
 
 ###############################################################################
 
-# needs tested...
 def file_parse(option, read_file, write_file=None, find_chars=None,
     replace_chars=None, split_chars=None):
     """Swiss Army knife for reading/writing files.
@@ -342,7 +339,6 @@ def get_numbers(string):
 
 ###############################################################################
 
-# needs tested...
 def get_time(option):
     """Get current timestamp and convert to desired type and format.
     -----------
@@ -427,7 +423,6 @@ def get_time(option):
 
 ###############################################################################
 
-# needs tested...
 def join_csv(directory, join_file):
     """Reads multiple .csv files from a directory and joins them based on a
     global ID field.
@@ -445,19 +440,17 @@ def join_csv(directory, join_file):
     get_metadata('.mxd', r'\\folder')
     join_csv(r'\\folder1', r'\\folder2\\.csv')
     """
-    
-    # required modules
+
     import os
     import glob
     import pandas
     from pandas import concat, merge, read_csv
-    
-    # enter directory
+
     os.chdir(directory)
-    
+
     # start file naming suffix
     counter = 0
-    
+
     # loop through directory returning the
     # fully qualified path name to a file
     # filtered by its extension
@@ -477,7 +470,7 @@ def join_csv(directory, join_file):
                 df_merge.to_csv(f'{directory}\\LayersJoined{counter}.csv')
                 # delete mxd layer files
                 os.remove(file)
-    
+
     # fully qualified paths to joined files with wildcard suffix
     file_paths = os.path.join(directory, 'LayersJoined*.csv')
     # create list of joined file paths
@@ -554,7 +547,6 @@ def new_serial(serial_file, serial_number=None):
 
 ###############################################################################
 
-# needs tested...
 def session_args(*args, **kwargs):
     """Creates a dictionary of arguments.
     ------
@@ -567,7 +559,6 @@ def session_args(*args, **kwargs):
 
 ###############################################################################
 
-# needs tested...
 def session_in(session_data):
     """Reads results from previous session and returns as a tuple.
     -----------
@@ -587,7 +578,6 @@ def session_in(session_data):
 
 ###############################################################################
 
-# needs tested...
 def session_out(arguments, session_data):
     """Writes function results to bytes for use by next session.
     -----------
@@ -608,7 +598,6 @@ def session_out(arguments, session_data):
 
 ###############################################################################
 
-# needs tested...
 def trim_scale(csv_in, csv_out, columns, index, scale):
     """Drops decimal places in floating point values to specified scale.
     -----------
@@ -632,11 +621,15 @@ def trim_scale(csv_in, csv_out, columns, index, scale):
     trim_scale(csv_in=r'.csv', csv_out=r'.csv', columns=['x','y'],
         index='id', scale=2)
     """
+
     import os
     import pandas
+
     df = pandas.read_csv(filepath_or_buffer=csv_in, index_col=index)
+
     for column in columns:
         df[column] = df[column].apply(lambda x: round(x, scale))
+
     os.remove(csv_in)
     df.to_csv(csv_out)
 
@@ -696,7 +689,6 @@ def validate_serial(string):
 
 ###############################################################################
 
-# tested 9/27/2023
 def validate_string(length, option, text):
     """Enforces length and character type standards in a string.
     Spaces and special characters are not permitted.

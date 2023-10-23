@@ -8,8 +8,10 @@
 # -------------
 
 # pyxidust.arc.add_data()
+# pyxidust.arc.change_source()
 # pyxidust.arc.clear_gdb()
 # pyxidust.arc.create_index()
+# pyxidust.arc.csv_to_features()
 # pyxidust.arc.csv_to_gdb()
 # pyxidust.arc.cubic_volume()
 # pyxidust.arc.excel_to_gdb()
@@ -215,6 +217,50 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
 
 ###############################################################################
 
+def change_source(pro_obj, dataset, layer, option, old_source, new_source):
+    """Changes source of map layers in an ArcGIS PRO project.
+    -----------
+    PARAMETERS:
+    -----------
+    pro_obj:
+        ArcGIS project object
+    dataset: str
+        layer name as it appears in the catalog pane table of contents
+    layer:
+        ArcGIS layer object
+    option/old_source/new_source:
+        '1' - old_source: str
+                  path to a geodatabase for the existing data source
+              new_source: str
+                  path to a geodatabase for the new data source
+    ------
+    USAGE:
+    ------
+    import arcpy
+    from pyxidust.arc import change_source
+    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
+    map_ = project_.listMaps('Map')[0]
+    # [index position of layer in TOC]
+    layer_ = map_.listLayers('Points')[3]
+    change_source(project=project_, dataset='Points', layer=layer_,
+        option='1', old_source=r'\\Old.gdb', new_source=r'\\New.gdb')
+    """
+
+    import arcpy
+    
+    _project = pro_obj
+
+    if option == '1':
+        source = {'dataset': dataset, 'workspace_factory': 'File Geodatabase',
+                  'connection_info': {'database': old_source}}
+        new = {'dataset': dataset, 'workspace_factory': 'File Geodatabase',
+                  'connection_info': {'database': new_source}}
+        layer.updateConnectionProperties(source, new, True, False, True)
+
+    _project.save()
+
+###############################################################################
+
 def clear_gdb(gdb):
     """Removes all feature classes, rasters, and tables from a geodatabase.
     -----------
@@ -227,9 +273,12 @@ def clear_gdb(gdb):
     ------
     clear_gdb(gdb=r'GDB.gdb')
     """
+
     import arcpy
     from arcpy.management import Delete
+
     arcpy.env.workspace = gdb
+
     for feature in arcpy.ListFeatureClasses():
         Delete(in_data=feature)
     for raster in arcpy.ListRasters():
@@ -328,7 +377,41 @@ def create_index(directory):
     maps_merge = merge(df_maps, df_info, how='left', on=None,
         left_on='ID', right_on='ID')
     maps_merge.to_csv(f'{directory}\\MapsJoined.csv', sep='|')
-    
+
+###############################################################################
+
+def csv_to_features(input_file, output_features, crs):
+    """Converts X/Y data in a .csv file to ArcGIS features and removes
+    duplicate coordinate pairs.
+    -----------
+    PARAMETERS:
+    -----------
+    input_file: str
+        path to a .csv file containing coordinate pairs; expected field format
+        is 'id','x','y'
+    output_features: str
+        path to a shapefile, feature class, etc. that will store the output
+        data
+    crs: str
+        path to an ArcGIS projection file of the desired output coordinate
+        reference system
+    ------
+    USAGE:
+    ------
+    csv_to_features(input_file=r'\\.csv', output_features=r'\\Points.shp')
+    """
+
+    import arcpy
+    from arcpy.management import CopyFeatures, DeleteIdentical
+    from arcpy.management import MakeXYEventLayer
+
+    MakeXYEventLayer(table=input_file, in_x_field='x', in_y_field='y',
+        out_layer=r'memory\\event', spatial_reference=crs)
+    plot = CopyFeatures(in_features=r'memory\\event',
+        out_feature_class=output_features)
+    # remove duplicate coordinate pairs for coincident polygons
+    DeleteIdentical(in_dataset=output_features, fields=['Shape', 'x', 'y'])
+
 ###############################################################################
 
 def csv_to_gdb(csv, gdb, table):
@@ -685,12 +768,16 @@ def move_elements(pro_obj, lay_obj, ele_type, wildcard):
     move_elements(pro_obj=project, lay_obj=layout,
         ele_type=GRAPHIC_ELEMENT, wildcard='*Info')
     """
+
     import arcpy
+
     project = pro_obj
     layout = lay_obj
+
     for element in layout.listElements(ele_type, wildcard):
         element.elementPositionX = -abs(100000.00)
         element.elementPositionY = -abs(100000.00)
+
     project.save()
 
 ###############################################################################
@@ -822,16 +909,18 @@ def plot_csv(pro_obj, map_name, csv, crs, output, x_name, y_name, z_name=None):
         arcpy.management.MakeXYEventLayer(table=csv, in_x_field=x_name,
             in_y_field=y_name, out_layer=r'memory\\event',
             spatial_reference=crs)
-        
+    
+    # arcobjects results object
     plot = arcpy.management.CopyFeatures(in_features=r'memory\\event',
         out_feature_class=output)
     features = arcpy.management.MakeFeatureLayer(in_features=plot,
         out_layer='plot')
     
+    # arcpy.mp layer object
     _layer = features.getOutput(0)
     _map.addLayer(_layer)
     _project.save()
-    
+
 ###############################################################################
 
 def plot_excel(workbook, pro_obj, map_name, crs, output, x_name, y_name,
@@ -874,30 +963,30 @@ def plot_excel(workbook, pro_obj, map_name, crs, output, x_name, y_name,
     """
     
     import os
-    from pyxidust.arc import csv_plot
+    from pyxidust.arc import plot_csv
     from pandas import DataFrame, read_excel
     
-    plot = (f'{os.getcwd()}\\plot.csv')
+    plot = (f'{os.getcwd()}\\excel_plot.csv')
     
     if sheet == None and z_name == None:
         df = DataFrame(read_excel(workbook))
         df.to_csv(plot)
-        csv_plot(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
+        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
             output=output, x_name=x_name, y_name=y_name)
     elif sheet != None and z_name == None:
         df = DataFrame(read_excel(workbook, sheet_name=sheet))
         df.to_csv(plot)
-        csv_plot(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
+        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
             output=output, x_name=x_name, y_name=y_name)
     elif sheet == None and z_name != None:
         df = DataFrame(read_excel(workbook))
         df.to_csv(plot)
-        csv_plot(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
+        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
             output=output, x_name=x_name, y_name=y_name, z_name=z_name)
     elif sheet != None and z_name != None:
         df = DataFrame(read_excel(workbook, sheet_name=sheet))
         df.to_csv(plot)
-        csv_plot(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
+        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
             output=output, x_name=x_name, y_name=y_name, z_name=z_name)
         
     os.remove(plot)
@@ -1041,14 +1130,18 @@ def remove_layers(pro_obj, map_obj, layers):
     map_ = project.listMaps('Map')[0]
     remove_layers(pro_obj=project, map_obj=map_, layers={'Hydro', 'Points'})
     """
+
     import arcpy
+
     _project = pro_obj
     _map = map_obj
+
     for layer in _map.listLayers():
         if layer.isFeatureLayer:
             if layer.name in layers:
                 _layer = _map.listLayers(layer.name)[0]
                 _map.removeLayer(_layer)
+
     _project.save()
 
 ###############################################################################
@@ -1105,19 +1198,20 @@ def turn_off(pro_obj, map_name, lyr_idx):
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
     turn_off(pro_obj=project_, map_name='Map', lyr_idx=[0,1,2])
     """
-    
+
     import arcpy
-    
+
     _project = pro_obj
     _map = _project.listMaps(map_name)[0]
-    
+
     for i in lyr_idx:
         index = int(i)
         _layer = _map.listLayers()[index]
         if _layer.isFeatureLayer:
             _layer.visible = False
+
     _project.save()
-    
+
 ###############################################################################
 
 def zoom_to(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust):
@@ -1164,5 +1258,7 @@ def zoom_to(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust):
     _map.referenceScale = arcpy.env.referenceScale
     scale = _map.referenceScale
     _project.save()
+    
+    return _extent, scale
     
 ###############################################################################

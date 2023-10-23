@@ -7,6 +7,22 @@
 # MODULE INDEX:
 # -------------
 
+# pyxidust.lidar.aspect()
+# pyxidust.lidar.buildings()
+# pyxidust.lidar.contours()
+# pyxidust.lidar.dem()
+# pyxidust.lidar.dem_shade()
+# pyxidust.lidar.dem_terrain()
+# pyxidust.lidar.dsm()
+# pyxidust.lidar.dsm_shade()
+# pyxidust.lidar.dsm_terrain()
+# pyxidust.lidar.intensity()
+# pyxidust.lidar.lasd()
+# pyxidust.lidar.mean()
+# pyxidust.lidar.metadata()
+# pyxidust.lidar.ranged()
+# pyxidust.lidar.slope()
+
 ###############################################################################
 
 def aspect(output_folder):
@@ -194,6 +210,24 @@ def intensity(output_folder):
     arcpy.conversion.LasDatasetToRaster('TOINTENSITY', intensity,
         'INTENSITY', 'BINNING AVERAGE LINEAR', 'INT', 'OBSERVATIONS',
         50000)
+
+def lasd(output_folder, crs):
+    """Creates a LASD dataset for further lidar processing.
+    -----------
+    PARAMETERS:
+    -----------
+    crs: str
+        path to an ArcGIS projection file of the desired output coordinate
+        reference system
+    """
+    
+    import arcpy
+    
+    las = (f'{output_folder}\\LAS')
+    lasd = (f'{output_folder}\\LASD\\Working.lasd')
+    
+    arcpy.management.CreateLasDataset(las, lasd, 'NO_RECURSION', '', crs,
+        'COMPUTE_STATS', 'ABSOLUTE_PATHS', 'NO_FILES')
 
 def mean(output_folder):
     """Creates a mean elevation surface from raw .las files.

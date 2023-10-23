@@ -1,4 +1,4 @@
-# Pyxidust
+# 🔮 Pyxidust
 ### Geoprocessing/lidar/project tools for ArcGIS PRO.
 <br>
 
@@ -29,6 +29,20 @@ add_data(pro_obj=project, map_name='Map', option='1',
 ```
 <br>
 
+### **Change Source Function**
+### Changes source of map layers in an ArcGIS PRO project.
+```py
+# change_source(project, dataset, layer, option, old_source, new_source)
+import arcpy
+from pyxidust.arc import change_source
+project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
+map_ = project_.listMaps('Map')[0]
+layer_ = map_.listLayers('Points')[3]
+change_source(project=project_, dataset='Points', layer=layer_,
+    option='1', old_source=r'\\Old.gdb', new_source=r'\\New.gdb')
+```
+<br>
+
 ### **Clear GDB Function**
 ### Removes all feature classes, rasters, and tables from a geodatabase.
 ```py
@@ -53,6 +67,15 @@ create_index(directory=r'\\folder')
 # csv_to_gdb(csv, gdb, table)
 from pyxidust.arc import csv_to_gdb
 csv_to_gdb(csv=r'\\.csv', gdb=r'\\.gdb', table='Output')
+```
+<br>
+
+### **CSV To Features Function**
+### Converts X/Y data in a .csv file to ArcGIS features and removes duplicate
+### coordinate pairs.
+```py
+# csv_to_features(input_file, output_features)
+csv_to_features(input_file=r'\\.csv', output_features=r'\\Points.shp')
 ```
 <br>
 
@@ -223,12 +246,22 @@ zoom_to(pro_obj=project, map_name='Map', lay_name='Layout', fra_name='Map Frame'
 <br>
 
 # Lidar Module
-
-
-
-
+The lidartools.py script in the pyxidust/scripts folder runs all functions
+in the lidar module as a suite of tools. Copy/paste the lidar template folder
+into the desired location and set all configs in the 'global configs' section
+at the top of the script.
 
 # Projects Module
+
+### **Delete Project Function**
+### Deletes .aprx file and associated data for workflows that do not require a
+### pro project.
+```py
+# delete_project(directory)
+delete_project(directory=r'\\')
+```
+<br>
+
 ### **New Project Decorator**
 ### Creates a new ArcGIS PRO project and workspace. Relevant project
 ### information is written to a catalog. A unique identifier cascades
@@ -393,15 +426,17 @@ validate_string(length='3', option='alpha', text='abc9')
 # Change Log
 **0.2.0** (date):
 - Added the following functions to the 'Arc' module:
-add_data, clear_gdb, explode_geometry, features_to_csv, move_elements,
-remove_layers
+add_data, change_source, clear_gdb, csv_to_features, explode_geometry,
+features_to_csv, move_elements, remove_layers
 
 - Added the 'Lidar' module
 
 - Added the 'Projects' module
 
 - Added the following functions to the 'Utils' module:
-clear_folder, collapse_path, file_parse, get_letters, get_numbers, get_time, join_csv, new_serial, session_args, session_in, session_out, trim_scale, validate_serial, validate_string
+clear_folder, collapse_path, file_parse, get_letters, get_numbers, get_time,
+join_csv, new_serial, session_args, session_in, session_out, trim_scale,
+validate_serial, validate_string
 <br>
 
 **0.1.2** (1/23/2023):
@@ -424,4 +459,15 @@ function with the same arguments
 
 **0.0.1** (11/10/2022):
 - Initial release and birth of Pyxidust!
+<br>
+
+# 🔮TEMPLATE
+### **Function/Class Name**
+### Description
+### Description
+### Description
+```py
+# signature
+...
+```
 <br>
