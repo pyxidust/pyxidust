@@ -107,6 +107,14 @@ features_to_csv(input_features=r'Shapefile.shp',
 ```
 <br>
 
+### **Image To Features Function**
+
+```py
+# sig
+...
+```
+<br>
+
 ### **Move Elements Function**
 Moves a selected set of elements off a layout in an ArcGIS PRO project.
 ```py
@@ -438,8 +446,9 @@ validate_serial, validate_string
 
 **0.1.0** (1/23/2023):
 - Added the 'Arc' module with the following functions:
-create_index, csv_to_gdb, cubic_volume, excel_to_gdb, place_anno, plot_csv,
-plot_excel, print_info, print_layers, set_default, turn_off, zoom_to
+create_index, csv_to_gdb, cubic_volume, excel_to_gdb, image_to_features,
+place_anno, plot_csv, plot_excel, print_info, print_layers, set_default,
+turn_off, zoom_to
 
 - Added the get_metadata function to the 'Utils' module
 

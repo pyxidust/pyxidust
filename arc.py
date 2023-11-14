@@ -17,6 +17,7 @@
 # pyxidust.arc.excel_to_gdb()
 # pyxidust.arc.explode_geometry()
 # pyxidust.arc.features_to_csv()
+# pyxidust.arc.image_to_features()
 # pyxidust.arc.move_elements()
 # pyxidust.arc.place_anno()
 # pyxidust.arc.plot_csv()
@@ -741,6 +742,98 @@ def features_to_csv(input_features, output_file, option):
             file.writelines(text)
 
         os.remove(json_temp)
+
+###############################################################################
+
+def image_to_features(image, classes, identifier, query, crs, directory,
+    area=None):
+    """Clips a georeferenced raster to a new extent based on parameters and
+    outputs the new clipped raster and polygon features.
+    -----------
+    PARAMETERS:
+    -----------
+    image: str
+        path to a georeferenced image that has been registered with the 'update
+        georeferencing' option applied; do not 'rectify' the image afterwards
+        as it blows out the RGB color values from the original image
+    classes: str
+        number of raster cell groups for the Iso Cluster Unsupervised
+        Classification tool; function can be run multiple times to produce the
+        desired results by tweaking this value combined with the query parameter
+    identifier: str
+        value will be appended to the end of all file names to tie results
+        together from multiple function calls
+    query: str
+        valid SQL 'where clause' that acts as a threshold in the Extract By
+        Attributes tool to limit the amount of features that will be processed
+        in the second part of the function; can also be used to clean data of
+        undesired values
+    crs: str
+        path to an ArcGIS projection file of the desired output coordinate
+        reference system
+    directory: str
+        path to an output folder to store the function results
+    area: str
+        valid SQL 'where clause' that acts as a threshold in the Select tool
+        to remove small polygons produced by rasterization/analysis which are
+        not part of the data
+    --------
+    RETURNS:
+    --------
+    image
+        clipped image within the mask
+    ------
+    USAGE:
+    ------
+    from pyxidust.arc import image_to_features
+    clip = image_to_features(image='\\Image.tif', classes='4', identifier='A',
+        query='VALUE = 1 OR VALUE = 2', crs='\\.prj', directory='\\Folder',
+        area='AREA >= 100')
+    # for sequential function calls feed the returned 'clip' as the image value
+    clip_2 = image_to_features(image=clip, classes='6', identifier='B',
+        query='VALUE = 3', crs='\\.prj', directory='\\Folder',
+        area='AREA >= 100')
+    """
+
+    import arcpy
+    from arcpy.analysis import Select
+    from arcpy.conversion import RasterToPolygon
+    from arcpy.management import CalculateGeometryAttributes
+    from arcpy.sa import ExtractByAttributes, ExtractByMask
+    from arcpy.sa import IsoClusterUnsupervisedClassification
+
+    arcpy.env.outputCoordinateSystem = crs
+    arcpy.CheckOutExtension('SPATIAL')
+
+    classes = int(classes)
+
+    # create raster for all polygons in image per classes
+    boundary = IsoClusterUnsupervisedClassification(image, classes)
+    boundary.save(f'{directory}\\boundary_{identifier}')
+
+    # retain only desired values per SQL query
+    extract = ExtractByAttributes(boundary, query)
+    extract.save(f'{directory}\\extract_{identifier}')
+
+    # convert extracted raster to polygons for use as mask
+    mask = (f'{directory}\\mask_{identifier}')
+    RasterToPolygon(extract, mask, 'SIMPLIFY', '', 'SINGLE_OUTER_PART')
+
+    # use area query to remove small polygons
+    if area != None:
+        CalculateGeometryAttributes(in_features=mask,
+            geometry_property='AREA AREA', area_unit='SQUARE_FEET_US')
+        clean = (f'{directory}\\clean_{identifier}')
+        Select(mask, clean, area)
+
+    # clip image using outer boundary as mask
+    extract = ExtractByMask(image, clean)
+    clip = (f'{directory}\\clip_{identifier.lower()}')
+    extract.save(clip)
+
+    arcpy.CheckInExtension('SPATIAL')
+
+    return clip
 
 ###############################################################################
 
