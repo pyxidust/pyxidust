@@ -1,90 +1,5 @@
-# pyxidust library arc module
-# Gabriel Peck 2023 (MIT license)
-
-###############################################################################
-
-# -------------
-# MODULE INDEX:
-# -------------
-
-# pyxidust.arc.add_data()
-# pyxidust.arc.change_source()
-# pyxidust.arc.clear_gdb()
-# pyxidust.arc.create_index()
-# pyxidust.arc.csv_to_features()
-# pyxidust.arc.csv_to_gdb()
-# pyxidust.arc.cubic_volume()
-# pyxidust.arc.excel_to_gdb()
-# pyxidust.arc.explode_geometry()
-# pyxidust.arc.features_to_csv()
-# pyxidust.arc.image_to_features()
-# pyxidust.arc.move_elements()
-# pyxidust.arc.place_anno()
-# pyxidust.arc.plot_csv()
-# pyxidust.arc.plot_excel()
-# pyxidust.arc.print_info()
-# pyxidust.arc.print_layers()
-# pyxidust.arc.remove_layers()
-# pyxidust.arc.set_default()
-# pyxidust.arc.turn_off()
-# pyxidust.arc.zoom_to()
-
-###############################################################################
-
-# ------------------
-# FUNCTION TEMPLATE:
-# ------------------
-
-# def func(pro_obj, map_obj, lay_obj, lyr_obj, fra_obj, ext_obj, map_name,
-#     lay_name, lyr_name, fra_name, lyr_idx, dataset):
-#     """Template for ArcGIS PRO geoprocessing pipelines.
-#     -----------
-#     PARAMETERS:
-#     -----------
-#     pro_obj:
-#         ArcGIS project object
-#     map_obj:
-#         ArcGIS map object
-#     lay_obj:
-#         ArcGIS layout object
-#     lyr_obj:
-#         ArcGIS layer object
-#     fra_obj:
-#         ArcGIS map frame object
-#     ext_obj:
-#         ArcGIS extent object
-#     map_name: str
-#         Map name as it appears in the catalog pane (default is 'Map')
-#     lay_name: str
-#         Layout name as it appears in the catalog pane (default is 'Layout')
-#     lyr_name: str
-#         Layer name as it appears in the map table of contents (TOC)
-#     fra_name: str
-#         Frame name as it appears in the layout TOC (default is 'Map Frame')
-#     lyr_idx: int
-#         Index position of a layer in the map TOC layer stack (0, 1, ...)
-#     dataset: str
-#         Path to a shapefile, feature class, etc.
-#     ------
-#     USAGE:
-#     ------
-#     # use trailing underbar for objects since map is a reserved keyword
-#     import arcpy
-#     project_ = arcpy.mp.ArcGISProject(path)
-#     func(pro_obj=project_, map_obj=map_, lay_obj=layout_, lyr_obj=layer_,
-#         fra_obj=frame_, ext_obj=extent_, map_name='Map', lay_name='Layout',
-#         lyr_name='Layer', fra_name='Map Frame', lyr_idx=0,
-#         dataset=r'\\Shapefile.shp')
-#     """
-
-#     import arcpy
-#     _project = pro_obj
-#     _map = map_obj
-#     _layout = lay_obj
-#     _layer = lyr_obj
-#     _frame = fra_obj
-#     _extent = ext_obj
-
+# Pyxidust: geoprocessing/lidar/project tools for ESRI ArcGIS PRO software
+# Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
 ###############################################################################
 
 def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
@@ -189,19 +104,19 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
     
     if option == '2':
         for layer in layers:
-            layer = (rf'{gdb}\{layer}')
+            layer = (rf'{gdb}\\{layer}')
             _map.addDataFromPath(layer)
     
     if option == '3':
         _set_environment()
         for fc in arcpy.ListFeatureClasses():
-            layer = (rf'{gdb}\{fc}')
+            layer = (rf'{gdb}\\{fc}')
             _map.addDataFromPath(layer)
     
     if option == '4':
         # layer file on disk
         layer_file = arcpy.mp.LayerFile(layers)
-        # expose layers with listLayers to use addLayer with layer file
+        # expose with listLayers to use addLayer
         for layer in layer_file.listLayers():
             _map.addLayer(add_layer_or_layerfile=layer,
                 add_position='TOP')
@@ -238,7 +153,7 @@ def change_source(pro_obj, dataset, layer, option, old_source, new_source):
     USAGE:
     ------
     import arcpy
-    from pyxidust.arc import change_source
+    from pyxidust.gp import change_source
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
     map_ = project_.listMaps('Map')[0]
     # [index position of layer in TOC]
@@ -280,108 +195,16 @@ def clear_gdb(gdb):
 
     arcpy.env.workspace = gdb
 
-    for feature in arcpy.ListFeatureClasses():
-        Delete(in_data=feature)
-    for raster in arcpy.ListRasters():
-        Delete(in_data=raster)
-    for table in arcpy.ListTables():
-        Delete(in_data=table)
+    features = arcpy.ListFeatureClasses()
+    rasters = arcpy.ListRasters()
+    tables = arcpy.ListTables()
+    contents = features + rasters + tables
+
+    Delete(in_data=contents)
 
 ###############################################################################
 
-def create_index(directory):
-    """Joins file metadata (name/path/modified) with layers/layouts/maps via a
-    global ID for each .aprx file in the specified directory.
-    -----------
-    PARAMETERS:
-    -----------
-    directory: path
-        path to a directory containing files with an .aprx extension
-    ------
-    USAGE:
-    ------
-    from pyxidust.arc import create_index
-    create_index(directory=r'\\folder')
-    """
-    
-    import arcpy
-    import pandas
-    from pandas import merge, read_csv
-    from pyxidust.utils import get_metadata
-    
-    # get file name/path/modified
-    get_metadata('.aprx', directory)
-    # read file metadata into pandas dataframe ('df')
-    df = read_csv(f'{directory}\\Catalog.csv')
-    # create list of ArcGIS PRO project objects
-    projects = [arcpy.mp.ArcGISProject(i) for i in df['FILE_PATH']]
-
-    # create new lists for each project chunk
-    # when using outside of function scope
-    map_frames = []
-    map_layers = []
-    map_layouts = []
-    
-    # return tuples with ID/project object
-    for i in enumerate(projects, start=1):
-        # tuple[-1] = project object
-        project = i[-1]
-        # tuple[-2] = global ID
-        identifier = i[-2]
-        # arcpy functions
-        maps = project.listMaps()
-        layouts = project.listLayouts()
-        # loop projects; return ID/attributes
-        # separated by pipe symbol; write to list
-        for _maps in maps:
-            layers = _maps.listLayers()
-            map_text = str(identifier) + '|' + _maps.name
-            map_frames.append(map_text)
-            for layer in layers:
-                layer_text = str(identifier) + '|' + layer.name
-                map_layers.append(layer_text)
-        for layout in layouts:
-            layout_text = str(identifier) + '|' + layout.name
-            map_layouts.append(layout_text)
-
-    # write field names/attributes to newlines
-    with open(f'{directory}\\Maps.csv', 'w+') as file:
-        file.write('ID|MAP_NAME\n')
-        for s in map_frames:
-            file.write('%s\n' % s)
-    with open(f'{directory}\\Layers.csv', 'w+') as file:
-        file.write('ID|LAYER_NAME\n')
-        for s in map_layers:
-            file.write('%s\n' % s)
-    with open(f'{directory}\\Layouts.csv', 'w+') as file:
-        file.write('ID|LAYOUT_NAME\n')
-        for s in map_layouts:
-            file.write('%s\n' % s)
-    
-    # read-in structured newlines to perform merge assigning the global
-    # ID to the index values of the dataframes
-    df_info = read_csv(f'{directory}\\Catalog.csv', ',', index_col='ID')
-    df_layers = read_csv(f'{directory}\\Layers.csv', '|', index_col='ID')
-    df_layouts = read_csv(f'{directory}\\Layouts.csv', '|', index_col='ID')
-    df_maps = read_csv(f'{directory}\\Maps.csv', '|', index_col='ID')
-    
-    # join file metadata to ArcGIS attributes and write to csv; output files
-    # can be imported as separate sheets into an Excel notebook to create a
-    # finished product; Excel does not support the number of rows created when
-    # joining as one table with many-to-many relationships
-    layers_merge = merge(df_layers, df_info, how='left', on=None,
-        left_on='ID', right_on='ID')
-    layers_merge.to_csv(f'{directory}\\LayersJoined.csv', sep='|')
-    layouts_merge = merge(df_layouts, df_info, how='left', on=None,
-        left_on='ID', right_on='ID')
-    layouts_merge.to_csv(f'{directory}\\LayoutsJoined.csv', sep='|')
-    maps_merge = merge(df_maps, df_info, how='left', on=None,
-        left_on='ID', right_on='ID')
-    maps_merge.to_csv(f'{directory}\\MapsJoined.csv', sep='|')
-
-###############################################################################
-
-def csv_to_features(input_file, output_features, crs):
+def csv_to_features(input_file, output_features, crs, event_data):
     """Converts X/Y data in a .csv file to ArcGIS features and removes
     duplicate coordinate pairs.
     -----------
@@ -396,10 +219,17 @@ def csv_to_features(input_file, output_features, crs):
     crs: str
         path to an ArcGIS projection file of the desired output coordinate
         reference system
+    event_data: path
+        output path to temporary event data; this parameter is exposed to
+        resolve memory conflicts between functions that make internal calls to
+        MakeXYEventLayer; suggested naming convention for successive calls is
+        XYEvent_CSVToFeatures where 'CSVToFeatures' is the name of the function being
+        called
     ------
     USAGE:
     ------
-    csv_to_features(input_file=r'\\.csv', output_features=r'\\Points.shp')
+    csv_to_features(input_file=r'\\.csv', output_features=r'\\Points.shp',
+        crs=r'\\.prj', event_data='XYEvent_XYEvent_CSVToFeatures')
     """
 
     import arcpy
@@ -407,9 +237,10 @@ def csv_to_features(input_file, output_features, crs):
     from arcpy.management import MakeXYEventLayer
 
     MakeXYEventLayer(table=input_file, in_x_field='x', in_y_field='y',
-        out_layer=r'memory\\event', spatial_reference=crs)
-    plot = CopyFeatures(in_features=r'memory\\event',
+        out_layer=event_data, spatial_reference=crs)
+    plot_csv_features = CopyFeatures(in_features=event_data,
         out_feature_class=output_features)
+
     # remove duplicate coordinate pairs for coincident polygons
     DeleteIdentical(in_dataset=output_features, fields=['Shape', 'x', 'y'])
 
@@ -429,7 +260,7 @@ def csv_to_gdb(csv, gdb, table):
     ------
     USAGE:
     ------
-    from pyxidust.arc import csv_to_gdb
+    from pyxidust.gp import csv_to_gdb
     csv_to_gdb(csv=r'\\.csv', gdb=r'\\.gdb', table='Output')
     """
     from arcpy.conversion import TableToTable
@@ -455,10 +286,10 @@ def cubic_volume(original, current, gdb, polygons):
     USAGE:
     ------
     from pyxidust import *
-    from pyxidust.arc import cubic_volume
+    from pyxidust.gp import cubic_volume
     cubic_volume(original=r'\\', current=r'\\', gdb=r'\\.gdb', polygons='poly')
     """
-    from pyxidust.utils import get_letters
+    from pyxidust.gp import get_suffix
     import arcpy
     from arcpy.ddd import CutFill
     from arcpy.sa import ExtractByMask
@@ -483,7 +314,7 @@ def cubic_volume(original, current, gdb, polygons):
 
     # letter iterator to workaround
     # numerals in filenames limitation
-    counter=get_letters(string='')
+    counter=get_suffix(string='')
     # geometry token SHAPE@ accesses polygon objects
     with SearchCursor(boundaries, ['SHAPE@']) as cursor:
         # loop polygon objects
@@ -607,7 +438,7 @@ def excel_to_gdb(workbook, gdb, table, sheet=None):
     ------
     USAGE:
     ------
-    from pyxidust.arc import excel_to_gdb
+    from pyxidust.gp import excel_to_gdb
     excel_to_gdb(workbook=r'\\.xlsx', gdb=r'\\.gdb', table='Output',
         sheet='Sheet 1')
     """
@@ -616,19 +447,21 @@ def excel_to_gdb(workbook, gdb, table, sheet=None):
     from pandas import DataFrame, read_excel
     from arcpy.conversion import TableToTable
     
-    csv = (f'{os.getcwd()}\\excel_to_gdb.csv')
+    csv_excel = (rf'{os.getcwd()}\\excel_to_gdb.csv')
     
     if sheet != None:
-        df = DataFrame(read_excel(workbook, sheet_name=sheet))
-        df.to_csv(csv)
-        TableToTable(csv, gdb, table)
+        df = DataFrame(read_excel(workbook, sheet_name=sheet,
+            engine='openpyxl'))
+        df.to_csv(csv_excel)
+        TableToTable(csv_excel, gdb, table)
+
     else:
-        df = DataFrame(read_excel(workbook))
-        df.to_csv(csv)
-        TableToTable(csv, gdb, table)
-        
-    os.remove(csv)
-    
+        df = DataFrame(read_excel(workbook, engine='openpyxl'))
+        df.to_csv(csv_excel)
+        TableToTable(csv_excel, gdb, table)
+
+    os.remove(csv_excel)
+
 ###############################################################################
 
 def explode_geometry(dataset, gdb):
@@ -644,7 +477,7 @@ def explode_geometry(dataset, gdb):
     ------
     USAGE:
     ------
-    from pyxidust.arc import explode_geometry
+    from pyxidust.gp import explode_geometry
     explode_geometry(dataset='Polygons', gdb=r'\\.gdb')
     """
     
@@ -652,21 +485,21 @@ def explode_geometry(dataset, gdb):
     from arcpy.da import SearchCursor
     from arcpy.analysis import Select
     from arcpy import AddFieldDelimiters as Delimiter
-    from pyxidust.utils import get_letters
+    from pyxidust.gp import get_suffix
     
     # construct feature class path
-    fc = (f'{gdb}\\{dataset}')
+    fc = (rf'{gdb}\\{dataset}')
     # get feature class properties
     fields = arcpy.Describe(fc).OIDFieldName
     # infinite generator
-    counter = get_letters(string='')
+    counter = get_suffix(string='')
     # loop rows in feature class
     with SearchCursor(fc, fields) as cursor:
         for row in cursor:
             # get unique letters for each row
             letter = next(counter)
             # construct filename/path for exports
-            explode = (f'{gdb}\\Explode_{letter}')
+            explode = (rf'{gdb}\\Explode_{letter}')
             # SQL 'where' clause
             clause = '{0} = {1}'.format(Delimiter(fc, fields), row[0])
             # get/export rows
@@ -674,7 +507,7 @@ def explode_geometry(dataset, gdb):
 
 ###############################################################################
 
-def features_to_csv(input_features, output_file, option):
+def features_to_csv(input_features, output_file, option, gdb=None):
     """Converts point/polygon features to a .csv file.
     -----------
     PARAMETERS:
@@ -686,6 +519,8 @@ def features_to_csv(input_features, output_file, option):
     option: str
         'point' - input features are point geometry
         'polygon' - input features are polygon geometry
+    gdb: path
+        full path to a geodatabase if option == 'point'
     ------
     USAGE:
     ------
@@ -697,21 +532,26 @@ def features_to_csv(input_features, output_file, option):
     import json
     import arcpy
     import pandas
+
     from arcpy.stats import ExportXYv
     from arcpy.conversion import FeaturesToJSON
     from pandas import json_normalize, read_csv
 
     arcpy.env.overwriteOutput = True
 
-    json_temp = (f'{os.getcwd()}\\features_to_csv.json')
-    csv_temp = (f'{os.getcwd()}\\features_to_csv.csv')
+    json_temp = (rf'{os.getcwd()}\\features_to_csv.json')
+    csv_temp = (rf'{os.getcwd()}\\features_to_csv.csv')
 
     if option == 'point':
+        
+        os.chdir(gdb)
+        arcpy.env.workspace = os.getcwd()
 
         ExportXYv(Input_Feature_Class=input_features,
             Value_Field=['id', 'x', 'y'], Delimiter='COMMA',
             Output_ASCII_File=csv_temp,
             Add_Field_Names_to_Output='ADD_FIELD_NAMES')
+
         df_csv = read_csv(filepath_or_buffer=csv_temp, sep=',')
         df_clean = df_csv.loc[:, ['id', 'x', 'y']]
         df_clean.to_csv(path_or_buf=output_file, index=False)
@@ -732,7 +572,7 @@ def features_to_csv(input_features, output_file, option):
         GEO = 'geometry.rings'
         df_clean = df_flat[GEO]
         df_exploded = df_clean.explode(GEO).explode(GEO)
-        json_csv = df_exploded.to_csv(json_temp)
+        json_csv = df_exploded.to_csv(path_or_buf=json_temp, index=False)
 
         with open(json_temp, 'r') as file:
             text = file.read().replace('[', '').replace(']', '').replace('"', '').replace(',geometry.rings', '').replace(' ', '')
@@ -742,6 +582,38 @@ def features_to_csv(input_features, output_file, option):
             file.writelines(text)
 
         os.remove(json_temp)
+
+###############################################################################
+
+def get_suffix(string):
+    """Infinite generator that yields unique letter combinations for file
+    operations that do not support numbers.
+    -----------
+    PARAMETERS:
+    -----------
+    string: str
+        Base string that will have a unique letter combination appended;
+        yields a unique filename combination with each iteration; include
+        an underbar for readability if desired
+        (A, B, ..., _AA, _BB, ...)
+    ------
+    USAGE:
+    ------
+    from pyxidust.gp import get_suffix
+    generator = get_suffix(string='filename_')
+    next(generator) -> 'filename_A'
+    next(generator) -> 'filename_B'
+    """
+
+    from string import ascii_uppercase as UPPER
+
+    loops = 1
+    while loops > 0:
+        for letter in UPPER:
+            text = (f'{string}{letter * loops}')
+            yield text
+            if letter.startswith('Z'):
+                loops += 1
 
 ###############################################################################
 
@@ -785,7 +657,7 @@ def image_to_features(image, classes, identifier, query, crs, directory,
     ------
     USAGE:
     ------
-    from pyxidust.arc import image_to_features
+    from pyxidust.gp import image_to_features
     clip = image_to_features(image='\\Image.tif', classes='4', identifier='A',
         query='VALUE = 1 OR VALUE = 2', crs='\\.prj', directory='\\Folder',
         area='AREA >= 100')
@@ -796,12 +668,14 @@ def image_to_features(image, classes, identifier, query, crs, directory,
     """
 
     import arcpy
+
     from arcpy.analysis import Select
     from arcpy.conversion import RasterToPolygon
     from arcpy.management import CalculateGeometryAttributes
     from arcpy.sa import ExtractByAttributes, ExtractByMask
     from arcpy.sa import IsoClusterUnsupervisedClassification
 
+    arcpy.env.overwriteOutput = True
     arcpy.env.outputCoordinateSystem = crs
     arcpy.CheckOutExtension('SPATIAL')
 
@@ -809,26 +683,26 @@ def image_to_features(image, classes, identifier, query, crs, directory,
 
     # create raster for all polygons in image per classes
     boundary = IsoClusterUnsupervisedClassification(image, classes)
-    boundary.save(f'{directory}\\boundary_{identifier}')
+    boundary.save(rf'{directory}\\boundary_{identifier}')
 
     # retain only desired values per SQL query
     extract = ExtractByAttributes(boundary, query)
-    extract.save(f'{directory}\\extract_{identifier}')
+    extract.save(rf'{directory}\\extract_{identifier}')
 
     # convert extracted raster to polygons for use as mask
-    mask = (f'{directory}\\mask_{identifier}')
+    mask = (rf'{directory}\\mask_{identifier}')
     RasterToPolygon(extract, mask, 'SIMPLIFY', '', 'SINGLE_OUTER_PART')
 
     # use area query to remove small polygons
     if area != None:
         CalculateGeometryAttributes(in_features=mask,
             geometry_property='AREA AREA', area_unit='SQUARE_FEET_US')
-        clean = (f'{directory}\\clean_{identifier}')
+        clean = (rf'{directory}\\clean_{identifier}')
         Select(mask, clean, area)
 
     # clip image using outer boundary as mask
     extract = ExtractByMask(image, clean)
-    clip = (f'{directory}\\clip_{identifier.lower()}')
+    clip = (rf'{directory}\\clip_{identifier.lower()}')
     extract.save(clip)
 
     arcpy.CheckInExtension('SPATIAL')
@@ -921,7 +795,7 @@ def place_anno(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust, gdb,
         lay_name='Layout', fra_name='Map Frame', lyr_idx=0, adjust=1.1,
         gdb=r'\\.gdb', suffix='A')
     """
-    
+
     import arcpy
     from arcpy.cartography import ConvertLabelsToAnnotation
     
@@ -937,6 +811,7 @@ def place_anno(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust, gdb,
     arcpy.env.referenceScale = _frame.camera.scale
     _map.referenceScale = arcpy.env.referenceScale
     scale = _map.referenceScale
+
     _project.save()
     
     if lyr_name == None:
@@ -954,7 +829,8 @@ def place_anno(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust, gdb,
 
 ###############################################################################
 
-def plot_csv(pro_obj, map_name, csv, crs, output, x_name, y_name, z_name=None):
+def plot_csv(pro_obj, map_name, csv, crs, output, event_data, x_name, y_name,
+    z_name=None):
     """Converts X/Y/Z coordinates in a .csv file to a shapefile and adds it to
     a map in an ArcGIS PRO project.
     -----------
@@ -971,6 +847,12 @@ def plot_csv(pro_obj, map_name, csv, crs, output, x_name, y_name, z_name=None):
         desired output coordinate reference system
     output: path
         Fully-qualified/raw file path to the desired output shapefile
+    event_data: path
+        output path to temporary event data; this parameter is exposed to
+        resolve memory conflicts between functions that make internal calls to
+        MakeXYEventLayer; suggested naming convention for successive calls is
+        XYEvent_CSVPlot where 'CSVPlot' is the name of the function being
+        called
     x_name: str
         Name of field containing X coordinates to import
     y_name: str
@@ -981,43 +863,50 @@ def plot_csv(pro_obj, map_name, csv, crs, output, x_name, y_name, z_name=None):
     USAGE:
     ------
     import arcpy
-    from pyxidust.arc import plot_csv
+    from pyxidust.gp import plot_csv
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
     # z-values are optional
     plot_csv(pro_obj=project_, map_name='Map', csv=r'\\.csv', crs=r'\\.prj',
-        output=r'\\.shp', x_name='X', y_name='Y', z_name=None='Z')
+        output=r'\\.shp', event_data='XYEvent_CSV_Plot', x_name='X', y_name='Y',
+        z_name=None='Z')
     """
     
     import arcpy
     import os
+    import random
+    from string import ascii_uppercase as LETTERS
+    
+    letter = random.choice(LETTERS)
+    plot = (f'Plot_{letter}')
     
     _project = pro_obj
     _map = _project.listMaps(map_name)[0]
     
     if z_name != None:
         arcpy.management.MakeXYEventLayer(table=csv, in_x_field=x_name,
-            in_y_field=y_name, out_layer=r'memory\\event',
+            in_y_field=y_name, out_layer=event_data,
             spatial_reference=crs, in_z_field=z_name)
     if z_name == None:
         arcpy.management.MakeXYEventLayer(table=csv, in_x_field=x_name,
-            in_y_field=y_name, out_layer=r'memory\\event',
+            in_y_field=y_name, out_layer=event_data,
             spatial_reference=crs)
-    
+
     # arcobjects results object
-    plot = arcpy.management.CopyFeatures(in_features=r'memory\\event',
+    plot_csv = arcpy.management.CopyFeatures(in_features=event_data,
         out_feature_class=output)
-    features = arcpy.management.MakeFeatureLayer(in_features=plot,
-        out_layer='plot')
+    features_csv = arcpy.management.MakeFeatureLayer(in_features=plot_csv,
+        out_layer=plot)
     
     # arcpy.mp layer object
-    _layer = features.getOutput(0)
+    _layer = features_csv.getOutput(0)
     _map.addLayer(_layer)
+
     _project.save()
 
 ###############################################################################
 
-def plot_excel(workbook, pro_obj, map_name, crs, output, x_name, y_name,
-        z_name=None, sheet=None):
+def plot_excel(workbook, pro_obj, map_name, crs, shapefile, event_data, x_name,
+    y_name, z_name=None, sheet=None):
     """Converts X/Y/Z coordinates in a spreadsheet workbook to a shapefile and
     adds it to a map in an ArcGIS PRO project.
     -----------
@@ -1032,8 +921,14 @@ def plot_excel(workbook, pro_obj, map_name, crs, output, x_name, y_name,
     crs: path
         Fully-qualified/raw file path to an ArcGIS projection file of the
         desired output coordinate reference system
-    output: path
+    shapefile: path
         Fully-qualified/raw file path to the desired output shapefile
+    event_data: path
+        output path to temporary event data; this parameter is exposed to
+        resolve memory conflicts between functions that make internal calls to
+        MakeXYEventLayer; suggested naming convention for successive calls is
+        XYEvent_PlotExcel where 'PlotExcel' is the name of the function being
+        called
     x_name: str
         Name of field containing X coordinates to import
     y_name: str
@@ -1047,43 +942,51 @@ def plot_excel(workbook, pro_obj, map_name, crs, output, x_name, y_name,
     USAGE:
     ------
     import arcpy
-    from pyxidust.arc import plot_excel
+    from pyxidust.gp import plot_excel
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
     # z-values and sheet name are optional
     plot_excel(workbook=r'\\.xlsx', pro_obj=project_, map_name='Map',
-        crs=r'\\.prj', output=r'\\.shp', x_name='X', y_name='Y', z_name='Z',
+        crs=r'\\.prj', shapefile=r'\\.shp', event_data='XYEvent_PlotExcel', 
+        x_name='X', y_name='Y', z_name='Z',
         sheet='Sheet1')
     """
     
     import os
-    from pyxidust.arc import plot_csv
+    from pyxidust.gp import plot_csv
     from pandas import DataFrame, read_excel
     
-    plot = (f'{os.getcwd()}\\excel_plot.csv')
+    plot_excel = (rf'{os.getcwd()}\\excel_plot.csv')
     
     if sheet == None and z_name == None:
-        df = DataFrame(read_excel(workbook))
-        df.to_csv(plot)
-        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
-            output=output, x_name=x_name, y_name=y_name)
+        df = DataFrame(read_excel(workbook, engine='openpyxl'))
+        df.to_csv(plot_excel)
+        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
+            output=shapefile, event=event_data, x_name=x_name, y_name=y_name)
+
     elif sheet != None and z_name == None:
-        df = DataFrame(read_excel(workbook, sheet_name=sheet))
-        df.to_csv(plot)
-        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
-            output=output, x_name=x_name, y_name=y_name)
+        df = DataFrame(read_excel(workbook, sheet_name=sheet,
+            engine='openpyxl'))
+        df.to_csv(plot_excel)
+        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
+            output=shapefile, event=event_data, x_name=x_name, y_name=y_name)
+
     elif sheet == None and z_name != None:
-        df = DataFrame(read_excel(workbook))
-        df.to_csv(plot)
-        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
-            output=output, x_name=x_name, y_name=y_name, z_name=z_name)
+        df = DataFrame(read_excel(workbook, engine='openpyxl'))
+        df.to_csv(plot_excel)
+        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
+            output=shapefile, event=event_data, x_name=x_name, y_name=y_name, 
+            z_name=z_name)
+
     elif sheet != None and z_name != None:
-        df = DataFrame(read_excel(workbook, sheet_name=sheet))
-        df.to_csv(plot)
-        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot, crs=crs,
-            output=output, x_name=x_name, y_name=y_name, z_name=z_name)
-        
-    os.remove(plot)
-    
+        df = DataFrame(read_excel(workbook, sheet_name=sheet,
+            engine='openpyxl'))
+        df.to_csv(plot_excel)
+        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
+            output=shapefile, event=event_data, x_name=x_name, y_name=y_name, 
+            z_name=z_name)
+
+    os.remove(plot_excel)
+
 ###############################################################################
 
 def print_info(pro_obj):
@@ -1105,9 +1008,8 @@ def print_info(pro_obj):
     import arcpy
     
     _project = pro_obj
-    _layouts = [layout.name for layout in _project.listLayouts()]
-    
-    print(f'Layout names: {_layouts}\n')
+
+    print(f'Layout names: {[i.name for i in _project.listLayouts()]}\n')
     
     for _id, _map in enumerate(_project.listMaps(), start=1):
         for _layer in _map.listLayers():
@@ -1141,67 +1043,167 @@ def print_layers(pro_obj, map_name):
     _layers = _map.listLayers()
     
     for _layer in _layers:
+
         if _layer.isGroupLayer == False:
-            print('')
-            print('_' * 79)
-            print('')
-            print('')
-            if _layer.supports('NAME'):
-                print(f'Layer name: {_layer.name}')
-            if _layer.supports('LONGNAME'):
-                print(f'Group name: {_layer.longName}')
-            if _layer.is3DLayer:
-                print(f'3D layer = True')
-            if _layer.isWebLayer:
-                print(f'Web layer = True')
-            if _layer.isSceneLayer:
-                print(f'Scene layer = True')
-            if _layer.isTimeEnabled:
-                print(f'Time enabled = True')
-            if _layer.isRasterLayer:
-                print(f'Raster layer = True')
-            if _layer.isBasemapLayer:
-                print(f'Basemap layer = True')
-            if _layer.isFeatureLayer:
-                print(f'Feature layer = True')
-            if _layer.isBroken:
-                print(f'Broken data source = True')
-            if _layer.supports('VISIBLE'):
-                print(f'Visible = {_layer.visible}')
-            if _layer.isNetworkAnalystLayer:
-                print(f'Network analyst layer = True')
-            if _layer.isNetworkDatasetLayer:
-                print(f'Network dataset layer = True')
-            if _layer.supports('SHOWLABELS'):
-                print(f'Labels on = {_layer.showLabels}')
-            print('')
-            if _layer.supports('TIME'):
-                print(f'Time: {_layer.time}')
-            if _layer.supports('CONTRAST'):
-                print(f'Contrast: {_layer.contrast}')
-            if _layer.supports('BRIGHTNESS'):
-                print(f'Brightness: {_layer.brightness}')
-            if _layer.supports('TRANSPARENCY'):
-                print(f'Transparency: {_layer.transparency}')
-            if _layer.supports('MINTHRESHOLD'):
-                print(f'Min display scale: {_layer.minThreshold}')
-            if _layer.supports('MAXTHRESHOLD'):
-                print(f'Max display scale: {_layer.maxThreshold}')
-            if _layer.supports('DEFINITIONQUERY'):
-                print(f'Query: {_layer.definitionQuery}')
-            print('')
-            if _layer.supports('URI'):
-                print(f'Universal resource indicator: {_layer.URI}')
-            if _layer.supports('DATASOURCE'):
-                print(f'Source: {_layer.dataSource}')
-            if _layer.supports('CONNECTIONPROPERTIES'):
-                print(f'Connection: {_layer.connectionProperties}')
-            if _layer.supports('METADATA'):
-                print('')
-                meta = _layer.metadata
-                print(f'Metadata title: {meta.title}')
-                print(f'Metadata description: {meta.description}')
+            print(f'\n{"_"*79}\n\n')
+            
+            try:
+                if _layer.supports('NAME'):
+                    print(f'Layer name: {_layer.name}')
+            except Exception as e:
+                print(e)
                 
+            try:
+                if _layer.supports('LONGNAME'):
+                    print(f'Group name: {_layer.longName}')
+            except Exception as e:
+                print(e)
+                
+            try:
+                if _layer.is3DLayer:
+                    print(f'3D layer = True')
+            except Exception as e:
+                print(e)
+                
+            try:
+                if _layer.isWebLayer:
+                    print(f'Web layer = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.isSceneLayer:
+                    print(f'Scene layer = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.isTimeEnabled:
+                    print(f'Time enabled = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.isRasterLayer:
+                    print(f'Raster layer = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.isBasemapLayer:
+                    print(f'Basemap layer = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.isFeatureLayer:
+                    print(f'Feature layer = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.isBroken:
+                    print(f'Broken data source = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.supports('VISIBLE'):
+                    print(f'Visible = {_layer.visible}')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.isNetworkAnalystLayer:
+                    print(f'Network analyst layer = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.isNetworkDatasetLayer:
+                    print(f'Network dataset layer = True')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.supports('SHOWLABELS'):
+                    print(f'Labels on = {_layer.showLabels}')
+            except Exception as e:
+                print(e)
+
+            print(f'\n{"_"*79}\n\n')
+            
+            try:
+                if _layer.supports('TIME'):
+                    print(f'Time: {_layer.time}')
+            except Exception as e:
+                print(e)
+            
+            try:
+                if _layer.supports('CONTRAST'):
+                    print(f'Contrast: {_layer.contrast}')
+            except Exception as e:
+                print(e)
+            
+            try:
+                if _layer.supports('BRIGHTNESS'):
+                    print(f'Brightness: {_layer.brightness}')
+            except Exception as e:
+                print(e)
+            
+            try:
+                if _layer.supports('TRANSPARENCY'):
+                    print(f'Transparency: {_layer.transparency}')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.supports('MINTHRESHOLD'):
+                    print(f'Min display scale: {_layer.minThreshold}')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.supports('MAXTHRESHOLD'):
+                    print(f'Max display scale: {_layer.maxThreshold}')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.supports('DEFINITIONQUERY'):
+                    print(f'Query: {_layer.definitionQuery}')
+            except Exception as e:
+                print(e)
+
+            print(f'\n{"_"*79}\n\n')
+
+            try:
+                if _layer.supports('URI'):
+                    print(f'Universal resource indicator: {_layer.URI}')
+            except Exception as e:
+                print(e)
+                
+            try:
+                if _layer.supports('DATASOURCE'):
+                    print(f'Source: {_layer.dataSource}')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.supports('CONNECTIONPROPERTIES'):
+                    print(f'Connection: {_layer.connectionProperties}')
+            except Exception as e:
+                print(e)
+
+            try:
+                if _layer.supports('METADATA'):
+                    print(f'\n{"_"*79}\n\n')
+                    meta = _layer.metadata
+                    print(f'Metadata title: {meta.title}')
+                    print(f'Metadata description: {meta.description}')
+            except Exception as e:
+                print(e)
+
 ###############################################################################
 
 def remove_layers(pro_obj, map_obj, layers):
@@ -1239,40 +1241,8 @@ def remove_layers(pro_obj, map_obj, layers):
 
 ###############################################################################
 
-def set_default(pro_obj, home, gdb, toolbox):
-    """Updates home folder/default geodatabase/toolbox in an ArcGIS PRO project.
-    -----------
-    PARAMETERS:
-    -----------
-    pro_obj:
-        ArcGIS project object
-    home: path
-        path to a new home folder for the PRO project
-    gdb: path
-        path to a new default geodatabase for the PRO project
-    toolbox: path
-        path to a new default toolbox for the PRO project
-    ------
-    USAGE:
-    ------
-    import arcpy
-    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    set_default(pro_obj=project_, home=r'\\folder', gdb=r'\\.gdb',
-        toolbox=r'\\.tbx')
-    """
-    
-    import arcpy
-    
-    _project = pro_obj
-    _project.homeFolder = home
-    _project.defaultGeodatabase = gdb
-    _project.defaultToolbox = toolbox
-    _project.save()
-    
-###############################################################################
-
-def turn_off(pro_obj, map_name, lyr_idx):
-    """Turns off layers in a map in an ArcGIS PRO project if the layer index
+def visible_layers(pro_obj, map_name, lyr_idx, option=None):
+    """Turns on/off layers in a map in an ArcGIS PRO project if the layer index
     position is found in the input list.
     -----------
     PARAMETERS:
@@ -1284,12 +1254,15 @@ def turn_off(pro_obj, map_name, lyr_idx):
     lyr_idx: list
         List of integers representing index positions of layers in the map
         table of contents layer stack to turn off
+    option: str
+        if option == 'on' layers that are off in the map will be visible;
+        if option == 'off' layers that are on in the map will not be visible
     ------
     USAGE:
     ------
     import arcpy
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    turn_off(pro_obj=project_, map_name='Map', lyr_idx=[0,1,2])
+    visible_layers(pro_obj=project_, map_name='Map', lyr_idx=[0,1,2])
     """
 
     import arcpy
@@ -1297,11 +1270,14 @@ def turn_off(pro_obj, map_name, lyr_idx):
     _project = pro_obj
     _map = _project.listMaps(map_name)[0]
 
-    for i in lyr_idx:
-        index = int(i)
+    for element in lyr_idx:
+        index = int(element)
         _layer = _map.listLayers()[index]
         if _layer.isFeatureLayer:
-            _layer.visible = False
+            if option == 'on':
+                _layer.visible = True
+            else:
+                _layer.visible = False
 
     _project.save()
 
@@ -1350,8 +1326,7 @@ def zoom_to(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust):
     arcpy.env.referenceScale = _frame.camera.scale
     _map.referenceScale = arcpy.env.referenceScale
     scale = _map.referenceScale
+
     _project.save()
     
     return _extent, scale
-    
-###############################################################################

@@ -1,5 +1,7 @@
-# pyxidust library lidartools script
-# Gabriel Peck 2023 (MIT license)
+# Pyxidust: geoprocessing/lidar/project tools for ESRI ArcGIS PRO software
+# Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
+
+###############################################################################
 
 """The lidartools script uses functions from the pyxidust.lidar module to
 create a suite of lidar datasets from raw .las files. Users can comment-out
