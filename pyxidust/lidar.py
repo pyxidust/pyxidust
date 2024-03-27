@@ -9,7 +9,6 @@ def aspect(output_folder):
     import arcpy
 
     dem = (rf'{output_folder}\\DEM\\dem.tif')
-
     arcpy.CheckOutExtension('SPATIAL')
     aspect = arcpy.sa.SurfaceParameters(dem, 'ASPECT')
     aspect.save(rf'{output_folder}\\Aspect\\aspect.tif')
@@ -72,7 +71,6 @@ def dem(output_folder):
 
     dem = (rf'{output_folder}\\DEM\\dem.tif')
     lasd = (rf'{output_folder}\\LASD\\Working.lasd')
-
     arcpy.management.MakeLasDatasetLayer(lasd, 'TODEM', class_code = 2)
     arcpy.conversion.LasDatasetToRaster('TODEM', dem, 'ELEVATION',
         'TRIANGULATION NATURAL_NEIGHBOR WINDOW_SIZE MAXIMUM 0',
@@ -88,7 +86,6 @@ def dem_shade(output_folder):
     import arcpy
 
     dem = (rf'{output_folder}\\DEM\\dem.tif')
-
     hillshade_dem = arcpy.ia.Hillshade(dem, '', '', 3, 'DEGREE', '', '', '', 1)
     hillshade_dem.save(rf'{output_folder}\\HillshadeDEM\\hillshadedem.tif')
 
@@ -104,9 +101,8 @@ def dem_terrain(output_folder, projection):
     """
 
     import arcpy
+    from pyxidust.config import LEVELS
     
-    LEVELS = '2.5 1200; 5 2500; 7 5000; 15 10000; 20 24000; 25 62500; 30 100000'
-
     las = (rf'{output_folder}\\LAS')
     terraindem_db = (rf'{output_folder}\\TerrainDEM\\TerrainDEM.gdb')
     multidem = (rf'{terraindem_db}\\TDEM\\Multi')
@@ -127,6 +123,7 @@ def dem_terrain(output_folder, projection):
     except:
         pass
 
+    # workaround for bug in PRO; remove when resolved in future version
     try:
         arcpy.ddd.AddFeatureClassToTerrain(terraindem, [multidem, 'Shape',
             'Mass_Points', 1, 0, 0, True, False, 'Multi_embed', '<None>',
@@ -149,7 +146,6 @@ def dsm(output_folder):
 
     dsm = (rf'{output_folder}\\DSM\\dsm.tif')
     lasd = (rf'{output_folder}\\LASD\\Working.lasd')
-
     arcpy.management.MakeLasDatasetLayer(lasd, 'TODSM', 1)
     arcpy.conversion.LasDatasetToRaster('TODSM', dsm, 'ELEVATION',
         'BINNING MAXIMUM NATURAL_NEIGHBOR', 'FLOAT', 'OBSERVATIONS', 50000)
@@ -164,7 +160,6 @@ def dsm_shade(output_folder):
     import arcpy
 
     dsm = (rf'{output_folder}\\DSM\\dsm.tif')
-
     hillshade_dsm = arcpy.ia.Hillshade(dsm, '', '', 3, 'DEGREE', '', '', '', 1)
     hillshade_dsm.save(rf'{output_folder}\\HillshadeDSM\\hillshadedsm.tif')
 
@@ -180,8 +175,7 @@ def dsm_terrain(output_folder, projection):
     """
 
     import arcpy
-
-    LEVELS = '2.5 1200; 5 2500; 7 5000; 15 10000; 20 24000; 25 62500; 30 100000'
+    from pyxidust.config import LEVELS
 
     las = (rf'{output_folder}\\LAS')
     terraindsm_db = (rf'{output_folder}\\TerrainDSM\\TerrainDSM.gdb')
@@ -203,6 +197,7 @@ def dsm_terrain(output_folder, projection):
     except:
         pass
 
+    # workaround for bug in PRO; remove when resolved in future version
     try:
         arcpy.ddd.AddFeatureClassToTerrain(terraindsm, [multidsm, 'Shape',
             'Mass_Points', 1, 0, 0, True, False, 'Multi_embed', '<None>',
@@ -225,11 +220,9 @@ def intensity(output_folder):
 
     intensity = (rf'{output_folder}\\Intensity\\intensity.tif')
     lasd = (rf'{output_folder}\\LASD\\Working.lasd')
-
     arcpy.management.MakeLasDatasetLayer(lasd, 'TOINTENSITY')
-    arcpy.conversion.LasDatasetToRaster('TOINTENSITY', intensity,
-        'INTENSITY', 'BINNING AVERAGE LINEAR', 'INT', 'OBSERVATIONS',
-        50000)
+    arcpy.conversion.LasDatasetToRaster('TOINTENSITY', intensity, 'INTENSITY',
+        'BINNING AVERAGE LINEAR', 'INT', 'OBSERVATIONS', 50000)
 
 ###############################################################################
 
@@ -247,7 +240,6 @@ def lasd(output_folder, crs):
     
     las = (rf'{output_folder}\\LAS')
     lasd = (rf'{output_folder}\\LASD\\Working.lasd')
-    
     arcpy.management.CreateLasDataset(las, lasd, 'NO_RECURSION', '', crs,
         'COMPUTE_STATS', 'ABSOLUTE_PATHS', 'NO_FILES')
 
@@ -260,7 +252,6 @@ def mean(output_folder):
     import arcpy
 
     dem = (rf'{output_folder}\\DEM\\dem.tif')
-
     arcpy.CheckOutExtension('SPATIAL')
     mean = arcpy.sa.FocalStatistics(dem, '', 'MEAN')
     mean.save(rf'{output_folder}\\Mean\\mean.tif')
@@ -275,7 +266,6 @@ def metadata(output_folder):
     import glob
     import os
     import time
-
     from arcpy import metadata as md
 
     terraindem_db = (rf'{output_folder}\\TerrainDEM\\TerrainDEM.gdb')
@@ -350,7 +340,6 @@ def ranged(output_folder):
     import arcpy
 
     dsm = (rf'{output_folder}\\DSM\\dsm.tif')
-
     arcpy.CheckOutExtension('SPATIAL')
     ranged = arcpy.sa.FocalStatistics(dsm, '', 'RANGE')
     ranged.save(rf'{output_folder}\\Range\\range.tif')
@@ -365,7 +354,6 @@ def slope(output_folder):
     import arcpy
 
     mean = (rf'{output_folder}\\Mean\\mean.tif')
-
     arcpy.CheckOutExtension('SPATIAL')
     slope = arcpy.sa.SurfaceParameters(mean, 'SLOPE')
     slope.save(rf'{output_folder}\\Slope\\slope.tif')

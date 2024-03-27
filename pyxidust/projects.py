@@ -3,12 +3,11 @@
 ###############################################################################
 
 def add_map(directory, filename, option, quantity, template=None):
-    """Adds new .aprx files to an existing project directory and increments the
+    """Adds new .aprx files to an existing project directory and increments
     existing serial numbers. If the clone option is selected users can choose
     any .aprx file in the directory as a template and the last .aprx file in
-    the directory will determine the last used serial number. This
-    functionality acts as a guard to prevent users from overwriting existing
-    files.
+    the directory will determine the last used serial number. This acts as a 
+    guard to prevent users from overwriting existing files.
     -----------
     PARAMETERS:
     -----------
@@ -38,34 +37,28 @@ def add_map(directory, filename, option, quantity, template=None):
         filename='20232179-0002_GPSPoints.aprx', option='scratch', 
         quantity='99', template='L_08x11')
     """
-    
+
     import os
     import shutil
     import arcpy
-
-    from pyxidust.projects import new_serial
     from pyxidust.config import LAYOUTS
-    
+
     # filter directory and return filename of 'bottom' .aprx file
     aprx = (([i for i in os.listdir(directory) if i.endswith('.aprx')]).pop())
-
     # get last-used serial number in directory from 'bottom' .aprx file
     serial_name_last, _ = aprx.replace('.aprx', '').split('_')
     _, serial_last = serial_name_last[:3], serial_name_last[3:]
-
     # get project details and layout element name
     serial_name, title = filename.replace('.aprx', '').split('_')
     _, serial_old = serial_name[:3], serial_name[3:]
-    
+
     def _create_project():
-        
-        size = (f'{template}.aprx')
-        aprx_old = os.path.join(directory, filename)
-        aprx_new = (f'{serial_new}_{title}.aprx')
-        source = aprx_old if option == 'clone' else rf'{LAYOUTS}\\{size}.aprx'
-        destination = (rf'{directory}\\{aprx_new}')
-        
+
+        aprx = os.path.join(directory, filename)
+        source = aprx if option == 'clone' else rf'{LAYOUTS}\\{template}.aprx'
+        destination = (rf'{directory}\\{serial_new}_{title}.aprx')
         shutil.copy(source, destination)
+
         project = arcpy.mp.ArcGISProject(destination)
         project_new = (f'{serial_new}_{title}')
         
@@ -87,13 +80,11 @@ def add_map(directory, filename, option, quantity, template=None):
             for element in layout.listElements('TEXT_ELEMENT', '*'):
                 if element.text == 'SERIAL_NUMBER':
                     element.text = serial_new
-        
-        project.save()
-    
-    # create new projects via incrementing serial numbers;
-    # start with last used serial in project directory
-    serial_new = new_serial(serial_last)
 
+        project.save()
+
+    # new projects per incremental serials
+    serial_new = new_serial(serial_last)
     for _ in range(0, int(quantity)):
         _create_project()
         serial_new = new_serial(serial_new)
@@ -107,14 +98,14 @@ def archive_project():
     import shutil
     from pyxidust.config import ARCHIVE, PROJECTS, YEAR
 
-    for root, dirs, files in os.walk(PROJECTS):
-        for dir_ in dirs:
-            if dir_.startswith(YEAR):
+    for root, folders, files in os.walk(PROJECTS):
+        for folder in folders:
+            if folder.startswith(YEAR):
                 pass
             else:
-                print(f'Moving folder to archive:\n{dir_}')
-                shutil.copytree(dir_, ARCHIVE)
-                shutil.rmtree(dir_, ignore_errors=False)
+                print(f'Moving folder to archive:\n{folder}\n')
+                shutil.copytree(folder, ARCHIVE)
+                shutil.rmtree(folder, ignore_errors=False)
 
 ###############################################################################
 
@@ -128,7 +119,6 @@ def create_folder(folder_name, map_name, template):
     directory = (f'{PROJECTS}\\{folder_name}')
     source = (f'{TEMPLATES}\\{template}.aprx')
     destination = (f'{directory}\\{map_name}')
-
     os.mkdir(directory)
     shutil.copy(source, destination)
 
@@ -150,61 +140,42 @@ def create_index(directory):
     from pyxidust.gp import create_index
     create_index(directory=r'\\folder')
     """
-    
+
     import arcpy
     import pandas
-
     from pandas import merge, read_csv
-    from pyxidust.projects import get_metadata
 
-    # create new lists for each project chunk
-    # when using outside of function scope
     map_frames = []
     map_layers = []
     map_layouts = []
-    
-    # get file name/path/modified
+
+    # get/read metadata/create projects
     get_metadata('.aprx', directory)
-    # read file metadata into pandas dataframe ('df')
     df = read_csv(filepath_or_buffer=rf'{directory}\\Catalog.csv')
-    # create list of ArcGIS PRO project objects
     projects = [arcpy.mp.ArcGISProject(i) for i in df['FILE_PATH']]
-    
-    # return tuples with ID/project object
+
+    # use ID/project object to get/write ID/attributes to list
     for identifier, project in enumerate(projects, start=1):
-
-        maps = project.listMaps()
-        layouts = project.listLayouts()
-
-        # get/write ID/attributes to list
-        for _maps in maps:
-            layers = _maps.listLayers()
-            map_text = str(identifier) + '|' + _maps.name
-            map_frames.append(map_text)
-            for layer in layers:
-                layer_text = str(identifier) + '|' + layer.name
-                map_layers.append(layer_text)
-
-        for layout in layouts:
-            layout_text = str(identifier) + '|' + layout.name
-            map_layouts.append(layout_text)
+        for _maps in project.listMaps():
+            map_frames.append(f'{str(identifier)}|{_maps.name}')
+            for layer in _maps.listLayers():
+                map_layers.append(f'{str(identifier)}|{layer.name}')
+        for layout in project.listLayouts():
+            map_layouts.append(f'{str(identifier)}|{layout.name}')
 
     # write field names/attributes to newlines
     with open(rf'{directory}\\Maps.csv', 'w+') as file:
-        file.write('ID|MAP_NAME\n')
-        for s in map_frames:
-            file.write('%s\n' % s)
+        map_index = '\n'.join(map_frames)
+        file.write(f'ID|MAP_NAME\n{map_index}')
 
     with open(rf'{directory}\\Layers.csv', 'w+') as file:
-        file.write('ID|LAYER_NAME\n')
-        for s in map_layers:
-            file.write('%s\n' % s)
+        layer_index = '\n'.join(map_layers)
+        file.write(f'ID|LAYER_NAME\n{layer_index}')
 
     with open(rf'{directory}\\Layouts.csv', 'w+') as file:
-        file.write('ID|LAYOUT_NAME\n')
-        for s in map_layouts:
-            file.write('%s\n' % s)
-    
+        layout_index = '\n'.join(map_layouts)
+        file.write(f'ID|LAYOUT_NAME\n{layout_index}')
+
     # read-in structured newlines to perform merge assigning the global
     # ID to the index values of the dataframes
     df_info = read_csv(filepath_or_buffer=rf'{directory}\\Catalog.csv',
@@ -215,7 +186,7 @@ def create_index(directory):
         sep='|', index_col='ID')
     df_maps = read_csv(filepath_or_buffer=rf'{directory}\\Maps.csv',
         sep='|', index_col='ID')
-    
+
     # join file metadata to ArcGIS attributes and write to csv; output files
     # can be imported as separate sheets into an Excel notebook to create a
     # finished product; Excel does not support the number of rows created when
@@ -246,17 +217,20 @@ def delete_project(directory):
     ------
     delete_project(directory=r'\\')
     """
-    
+
     import os
     import shutil
+    from mamba.config import DEFAULT_FILES, DEFAULT_FOLDERS
 
     for root, folders, files in os.walk(directory):
         for folder in folders:
-            if folder == '.backups' or folder == 'Index' or folder == 'GpMessages':
-                shutil.rmtree(os.path.join(root, folder))
+            for item in DEFAULT_FOLDERS:
+                if folder.startswith(item) or folder.endswith(item):
+                    shutil.rmtree(os.path.join(root, folder))
         for file in files:
-            if file.ednswith('.aprx'):
-                os.remove(os.path.join(root, file))
+            for item in DEFAULT_FILES:
+                if file.startswith(item) or file.endswith(item):
+                    os.remove(os.path.join(root, file))
 
 ###############################################################################
 
@@ -275,50 +249,32 @@ def get_metadata(extension, directory):
     from pyxidust.gp import get_metadata
     get_metadata(extension='.jpg', directory=r'\\folder')
     """
-    
+
     import datetime
     import os
     import pandas
-    
+    from pandas import concat, DataFrame
+
     name = []
     path = []
     time = []
-    
-    catalog = (f'{directory}\\Catalog.csv')
 
-    # loop through directory returning the fully qualified path name to a file
-    # filtered by its extension
-    for root, dirs, files in os.walk(directory):
+    for root, folders, files in os.walk(directory):
         for file in files:
             if file.endswith(extension):
-                # get full path of file
                 location = os.path.join(root, file)
-                # write file path to list
                 path.append(location)
-                # write file name to list
                 name.append(file)
-                # get UNIX time in seconds elapsed
                 unix_time = os.path.getmtime(location)
-                # convert UNIX time to UTC time
                 utc_time = datetime.datetime.utcfromtimestamp(unix_time)
-                # write UTC time to list
                 time.append(utc_time)
-                # read name list into data frame
-                df1 = pandas.DataFrame(name, columns=['FILE_NAME'])
-                # read path list into data frame
-                df2 = pandas.DataFrame(path, columns=['FILE_PATH'])
-                # read time list into data frame
-                df3 = pandas.DataFrame(time, columns=['LAST_MODIFIED'])
-                # combine data frames 1-3
-                df4 = pandas.concat([df1, df2, df3], axis='columns')
-                # shift index to start at one during initial crawl
-                # increment this index anytime you change file type
-                # or directory location to maintain a global ID
+                df1 = DataFrame(name, columns=['FILE_NAME'])
+                df2 = DataFrame(path, columns=['FILE_PATH'])
+                df3 = DataFrame(time, columns=['LAST_MODIFIED'])
+                df4 = concat([df1, df2, df3], axis='columns')
                 df4.index += 1
-                # set global 'ID' field name
                 df4.index.name = 'ID'
-                # write output to file
-                df5 = df4.to_csv(catalog)
+                df5 = df4.to_csv(rf'{directory}\\Catalog.csv')
 
 ###############################################################################
 
@@ -329,7 +285,6 @@ def get_serial():
 
     with open(SERIALS, 'r') as file:
         serial = (f'{YEAR}{str(int(file.read()) + 1)}')
-
     with open(SERIALS, 'w+') as file:
         file.write(serial)
 
@@ -368,13 +323,12 @@ def import_map(pro_obj, mxd, serial_file, serial_number=None):
     """
 
     import arcpy
-    from pyxidust.projects import new_serial
 
     # choose serial number format
     if serial_number == None:
-        serial_new = new_serial(serial_file)
+        serial_new = new_serial()
     else:
-        serial_new = new_serial(serial_file, serial_number)
+        serial_new = new_serial(serial_number)
 
     # close open items
     _project = pro_obj
@@ -410,21 +364,18 @@ def import_map(pro_obj, mxd, serial_file, serial_number=None):
 def log_project(description, name, serial):
     """Writes project information to the catalog."""
 
-    import getpass, time
+    import getpass
+    import time
     from pyxidust.config import CATALOG
 
     map_serial = (f'{serial}-0001')
     folder_name = (f'{serial}_{name}')
     map_name = (f'{map_serial}_{name}.aprx')
-
     creator = getpass.getuser()
-    modified = time.localtime()
-    stamp = time.strftime('%m/%d/%y,%H:%M:%S', modified)
-
-    entry = (f'\n{serial},{name},{description},{creator},{stamp}')
+    stamp = time.strftime('%m/%d/%y,%H:%M:%S', time.localtime())
 
     with open(CATALOG, 'a') as file:
-        file.write(entry)
+        file.write(f'\n{serial},{name},{description},{creator},{stamp}')
 
     return folder_name, map_name, map_serial
 
@@ -451,17 +402,15 @@ def memory_swap(project):
 
     project_path = project.filePath
     del project
-
     new_project = arcpy.mp.ArcGISProject(project_path)
     return new_project
 
 ###############################################################################
 
 def message_window(option, title, message):
-    """Lightweight wrapper for Tkinter error messages."""
+    """Wrapper for Tkinter error messages."""
 
-    import tkinter as tk
-    from tkinter import messagebox
+    from tkinter import messagebox, Tk
 
     options = {
         'askokcancel': messagebox.askokcancel,
@@ -477,7 +426,7 @@ def message_window(option, title, message):
         if option == key:
             error = value
 
-    root = tk.Tk()
+    root = Tk()
     root.withdraw()
     error(title, message)
 
@@ -504,55 +453,51 @@ def name_elements(directory, map_name, map_serial, name):
         layout.name = map_serial
 
     project.save()
-    
-    return project
 
 ###############################################################################
 
 # @new_project
-# *args, **kwargs = function(description, name, template, workflow)
 def new_project(function):
     import functools
     @functools.wraps(function)
-    # keywords fed to wrapper can be accessed in wrapper scope;
-    # args/kwargs feed keywords from function call into function scope
     def wrapper(description, name, template, *args, **kwargs):
         """Creates a new ArcGIS PRO project and workspace. Relevant project
         information is written to a catalog. A unique identifier cascades
         through all parts of the process. Use this decorator to wrap a
         geoprocessing pipeline to fully automate a workflow, or use it
-        as a standalone project creation tool."""
-        # wrapper scope -------------------------------------------------------
-        from sys import exit
-        from pyxidust.projects import archive_project, create_folder
-        from pyxidust.projects import get_serial, log_project
-        from pyxidust.projects import name_elements, message_window
-        from pyxidust.projects import validate_project
-        # check folder age |> validate user arguments
+        as a standalone project creation tool.
+        -----------
+        PARAMETERS:
+        -----------
+        description: str
+            project purpose written to catalog entry
+        name: str
+            project title used in file/folder name
+        template: str
+            desired orientation and map size for new project layout
+        ------
+        USAGE:
+        ------
+        # *args, **kwargs = function(description, name, template)
+        processed_data, results_value = geoprocessing_pipeline(
+            description, name, template, data_in, values)
+        """
+
+        # wrapper scope
         archive_project()
-        # validation |> pass/exit program |> get serial number
-        error = validate_project(description, name, template)
-        if error != None:
-            message_window(option='showerror', title='ERROR:', message=error)
-            restart = (f"'Check user input arguments and try again'")
-            message_window(option='showerror', title='ERROR:', message=restart)
-            exit()
-        if error == None:
-            # get_serial() |> log_project()
-            serial = get_serial()
-            #...
-            folder_name, map_name, map_serial = log_project(description, name,
-                serial)
-            #...
-            directory = create_folder(folder_name, map_name, template)
-            #...
-            project = name_elements(directory, map_name, map_serial, name)
-        # function scope ------------------------------------------------------
-        if error == None:
-            result = function(*args, **kwargs)
-        # wrapper scope -------------------------------------------------------
-        # if error == None:
-        #     ...
+        validate_project(description, name, template)
+        serial = get_serial()
+        folder_name, map_name, map_serial = log_project(
+            description, name, serial)
+        directory = create_folder(folder_name, map_name, template)
+        name_elements(directory, map_name, map_serial, name)
+
+        # function scope
+        result = function(*args, **kwargs)
+
+        return result
+
+    return wrapper
 
 ###############################################################################
 
@@ -580,29 +525,25 @@ def new_serial(serial=None):
     new_serial(serial='20231234-0001')
     """
 
-    from pyxidust.projects import get_serial, message_window, validate_serial
-    
     # pull new serial number
     if serial == None:
         serial_new = (f'{get_serial()}-0001')
 
-    # validate user input
+    # use existing serial number
     if serial != None:
         validate_serial(string=serial)
-
-    # increment base serial number
-    if serial != None and len(serial) == 8:
-        serial_new = (f'{serial}-0001')
-
-    # increment '-' serial number
-    elif serial != None and len(serial) == 13:
-        base, suffix = serial.split('-')
-        suffix_int = (int(suffix)) + 1
-        suffix_new = str(suffix_int).zfill(4)
-        if suffix_int > 9999:
-            serial_new = (f'{get_serial()}-0001')
-        else:
-            serial_new = (f'{base}-{suffix_new}')
+        # increment base serial number
+        if len(serial) == 8:
+            serial_new = (f'{serial}-0001')
+        # increment '-' serial number
+        elif len(serial) == 13:
+            base, suffix = serial.split('-')
+            suffix_int = (int(suffix)) + 1
+            suffix_new = str(suffix_int).zfill(4)
+            if suffix_int > 9999:
+                serial_new = (f'{get_serial()}-0001')
+            else:
+                serial_new = (f'{base}-{suffix_new}')
 
     return serial_new
 
@@ -647,27 +588,32 @@ def set_default(pro_obj, home, gdb, toolbox):
 def validate_project(description, name, template):
     """Performs data validation of user arguments."""
 
+    from sys import exit
     from string import punctuation as SPECIAL
     from pyxidust.config import SIZES
 
     if any(i.isnumeric() for i in description):
-        error = (f'Description does not accept numbers.')
+        error = 'Description does not accept numbers.'
     elif any(i in SPECIAL for i in description):
-        error = (f'Description does not accept special characters.')
+        error = 'Description does not accept special characters.'
     elif len(description) > 50:
-        error = (f'Description must be 50 characters or less.')
-    
+        error = 'Description must be 50 characters or less.'
+
     elif any(i.isspace() for i in name):
-        error = (f'Name does not accept spaces.')
+        error = 'Name does not accept spaces.'
     elif any(i in SPECIAL for i in name):
-        error = (f'Name does not accept special characters.')
+        error = 'Name does not accept special characters.'
     elif len(name) > 15:
-        error = (f'Name must be 15 characters or less.')
+        error = 'Name must be 15 characters or less.'
 
     elif template not in SIZES:
         error = (f'Invalid template size for {template}')
 
-    return error
+    if error != None:
+        message_window(option='showerror', title='ERROR:', message=error)
+        restart = "'Check user input arguments and try again'"
+        message_window(option='showerror', title='ERROR:', message=restart)
+        exit()
 
 ###############################################################################
 
@@ -687,26 +633,26 @@ def validate_serial(string):
     validate_serial(string='20201234-0001')
     """
 
-    from pyxidust.gui import launch_message
+    from string import punctuation as SPECIAL
 
     def _check_numeric(value):
         """Standard character validation."""
         if any(i.isalpha() for i in value):
-            error_message = (f'Serial number must not contain letters')
-            launch_message('showinfo', 'ERROR:', error_message)
+            error_message = 'Serial number must not contain letters'
+            message_window('showinfo', 'ERROR:', error_message)
         elif any(i.isspace() for i in value):
-            error_message = (f'Serial number cannot have spaces')
-            launch_message('showinfo', 'ERROR:', error_message)
+            error_message = 'Serial number cannot have spaces'
+            message_window('showinfo', 'ERROR:', error_message)
         elif any(i in SPECIAL for i in value):
-            error_message = (f'Serial number cannot have special characters')
-            launch_message('showinfo', 'ERROR:', error_message)
+            error_message = 'Serial number cannot have special characters'
+            message_window('showinfo', 'ERROR:', error_message)
         else:
             pass
 
     def _format_error():
         """Error handling if user inputs serial # in wrong format."""
-        error_message = (f'Serial # format is 00000000 or 00000000-0000')
-        launch_message(option='showinfo', title='ERROR', message=error_message)
+        error_message = 'Serial # format is 00000000 or 00000000-0000'
+        message_window(option='showinfo', title='ERROR', message=error_message)
 
     # base serial
     if len(string) == 8:

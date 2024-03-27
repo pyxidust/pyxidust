@@ -80,8 +80,11 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
 
     import os
     import arcpy
-    
-    # enables builtin arc methods
+
+    _project = pro_obj
+    _map = _project.listMaps(map_name)[0]
+
+    # enable core arc methods
     def _set_environment():
         environment = gdb if gdb != None else os.getcwd()
         os.chdir(environment)
@@ -94,9 +97,6 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
         _map.moveLayer(reference_layer=ref_layer, move_layer=new_layer,
             insert_position='BEFORE')
     
-    _project = pro_obj
-    _map = _project.listMaps(map_name)[0]
-    
     if option == '1':
         _map.addDataFromPath(layers)
         if lyr_idx != 0:
@@ -104,14 +104,12 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
     
     if option == '2':
         for layer in layers:
-            layer = (rf'{gdb}\\{layer}')
-            _map.addDataFromPath(layer)
+            _map.addDataFromPath(rf'{gdb}\\{layer}')
     
     if option == '3':
         _set_environment()
         for fc in arcpy.ListFeatureClasses():
-            layer = (rf'{gdb}\\{fc}')
-            _map.addDataFromPath(layer)
+            _map.addDataFromPath(rf'{gdb}\\{fc}')
     
     if option == '4':
         # layer file on disk
@@ -263,7 +261,9 @@ def csv_to_gdb(csv, gdb, table):
     from pyxidust.gp import csv_to_gdb
     csv_to_gdb(csv=r'\\.csv', gdb=r'\\.gdb', table='Output')
     """
+
     from arcpy.conversion import TableToTable
+
     TableToTable(csv, gdb, table)
 
 ###############################################################################
@@ -289,28 +289,27 @@ def cubic_volume(original, current, gdb, polygons):
     from pyxidust.gp import cubic_volume
     cubic_volume(original=r'\\', current=r'\\', gdb=r'\\.gdb', polygons='poly')
     """
-    from pyxidust.gp import get_suffix
+
     import arcpy
-    from arcpy.ddd import CutFill
-    from arcpy.sa import ExtractByMask
     from arcpy.analysis import Statistics
-    from arcpy.da import SearchCursor, UpdateCursor
     from arcpy.conversion import FeatureClassToFeatureClass
+    from arcpy.da import SearchCursor, UpdateCursor
+    from arcpy.ddd import CutFill
     from arcpy.management import AddField, CalculateField, DeleteField, Merge
-    
-    # need workspace to use list methods
-    arcpy.env.workspace = gdb
-    
-    # get required licenses
-    arcpy.CheckOutExtension('SPATIAL')
-    arcpy.CheckOutExtension('3D')
-    
+    from arcpy.sa import ExtractByMask
+
     # full path to input polygons
     boundaries = (f'{gdb}\\{polygons}')
-    
-    # stores letters for each row in search cursor;
-    # links polygons to rasters/tables via filename
+
+    # enable list methods
+    arcpy.env.workspace = gdb    
+    arcpy.CheckOutExtension('SPATIAL')
+    arcpy.CheckOutExtension('3D')
+
+    # links polygons via filename
     suffixes = []
+    # dict for suffix:sum values
+    sum_values = {}
 
     # letter iterator to workaround
     # numerals in filenames limitation
@@ -363,9 +362,7 @@ def cubic_volume(original, current, gdb, polygons):
                 statistics_fields=[['VOL_CUB_YDS', 'SUM']])
         except StopIteration:
             pass
-    
-    # dict for suffix:sum values
-    sum_values = {}
+
     # create new iterator for loop
     search_iterator = iter(suffixes)
     # get previous output with wild_card='stats*'
@@ -442,11 +439,11 @@ def excel_to_gdb(workbook, gdb, table, sheet=None):
     excel_to_gdb(workbook=r'\\.xlsx', gdb=r'\\.gdb', table='Output',
         sheet='Sheet 1')
     """
-    
+
     import os
-    from pandas import DataFrame, read_excel
     from arcpy.conversion import TableToTable
-    
+    from pandas import DataFrame, read_excel
+
     csv_excel = (rf'{os.getcwd()}\\excel_to_gdb.csv')
     
     if sheet != None:
@@ -480,13 +477,12 @@ def explode_geometry(dataset, gdb):
     from pyxidust.gp import explode_geometry
     explode_geometry(dataset='Polygons', gdb=r'\\.gdb')
     """
-    
+
     import arcpy
-    from arcpy.da import SearchCursor
-    from arcpy.analysis import Select
     from arcpy import AddFieldDelimiters as Delimiter
-    from pyxidust.gp import get_suffix
-    
+    from arcpy.analysis import Select
+    from arcpy.da import SearchCursor
+
     # construct feature class path
     fc = (rf'{gdb}\\{dataset}')
     # get feature class properties
@@ -528,59 +524,51 @@ def features_to_csv(input_features, output_file, option, gdb=None):
         output_file=r'CSV.csv', option='polygon')
     """
 
-    import os
     import json
+    import os
     import arcpy
     import pandas
 
-    from arcpy.stats import ExportXYv
     from arcpy.conversion import FeaturesToJSON
+    from arcpy.stats import ExportXYv
     from pandas import json_normalize, read_csv
-
-    arcpy.env.overwriteOutput = True
 
     json_temp = (rf'{os.getcwd()}\\features_to_csv.json')
     csv_temp = (rf'{os.getcwd()}\\features_to_csv.csv')
 
+    arcpy.env.overwriteOutput = True
+
     if option == 'point':
-        
         os.chdir(gdb)
         arcpy.env.workspace = os.getcwd()
-
         ExportXYv(Input_Feature_Class=input_features,
             Value_Field=['id', 'x', 'y'], Delimiter='COMMA',
             Output_ASCII_File=csv_temp,
             Add_Field_Names_to_Output='ADD_FIELD_NAMES')
-
         df_csv = read_csv(filepath_or_buffer=csv_temp, sep=',')
         df_clean = df_csv.loc[:, ['id', 'x', 'y']]
         df_clean.to_csv(path_or_buf=output_file, index=False)
         os.remove(csv_temp)
 
     if option == 'polygon':
-
         FeaturesToJSON(in_features=input_features,
             out_json_file=json_temp, format_json='FORMATTED')
-
         with open(json_temp, 'r') as file:
             json_file = json.load(file)
-
         os.remove(json_temp)
-
         df_flat = json_normalize(data=json_file, record_path='features',
             meta=['geometry', 'rings'], errors='ignore')
         GEO = 'geometry.rings'
         df_clean = df_flat[GEO]
         df_exploded = df_clean.explode(GEO).explode(GEO)
         json_csv = df_exploded.to_csv(path_or_buf=json_temp, index=False)
-
         with open(json_temp, 'r') as file:
-            text = file.read().replace('[', '').replace(']', '').replace('"', '').replace(',geometry.rings', '').replace(' ', '')
-
+            text = file.read().replace('[', '').replace(']', '')
+            text = text.replace('"', '').replace(',geometry.rings', '')
+            text = text.replace(' ', '')
         with open(output_file, 'w+') as file:
             file.write('id,x,y')
             file.writelines(text)
-
         os.remove(json_temp)
 
 ###############################################################################
@@ -668,7 +656,6 @@ def image_to_features(image, classes, identifier, query, crs, directory,
     """
 
     import arcpy
-
     from arcpy.analysis import Select
     from arcpy.conversion import RasterToPolygon
     from arcpy.management import CalculateGeometryAttributes
@@ -870,10 +857,10 @@ def plot_csv(pro_obj, map_name, csv, crs, output, event_data, x_name, y_name,
         output=r'\\.shp', event_data='XYEvent_CSV_Plot', x_name='X', y_name='Y',
         z_name=None='Z')
     """
-    
-    import arcpy
+
     import os
     import random
+    import arcpy
     from string import ascii_uppercase as LETTERS
     
     letter = random.choice(LETTERS)
@@ -892,9 +879,9 @@ def plot_csv(pro_obj, map_name, csv, crs, output, event_data, x_name, y_name,
             spatial_reference=crs)
 
     # arcobjects results object
-    plot_csv = arcpy.management.CopyFeatures(in_features=event_data,
+    csv_plot = arcpy.management.CopyFeatures(in_features=event_data,
         out_feature_class=output)
-    features_csv = arcpy.management.MakeFeatureLayer(in_features=plot_csv,
+    features_csv = arcpy.management.MakeFeatureLayer(in_features=csv_plot,
         out_layer=plot)
     
     # arcpy.mp layer object
@@ -952,38 +939,39 @@ def plot_excel(workbook, pro_obj, map_name, crs, shapefile, event_data, x_name,
     """
     
     import os
-    from pyxidust.gp import plot_csv
     from pandas import DataFrame, read_excel
-    
+
     plot_excel = (rf'{os.getcwd()}\\excel_plot.csv')
     
     if sheet == None and z_name == None:
         df = DataFrame(read_excel(workbook, engine='openpyxl'))
         df.to_csv(plot_excel)
         plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
-            output=shapefile, event=event_data, x_name=x_name, y_name=y_name)
+            output=shapefile, event_data=event_data, x_name=x_name,
+            y_name=y_name)
 
     elif sheet != None and z_name == None:
         df = DataFrame(read_excel(workbook, sheet_name=sheet,
             engine='openpyxl'))
         df.to_csv(plot_excel)
         plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
-            output=shapefile, event=event_data, x_name=x_name, y_name=y_name)
+            output=shapefile, event_data=event_data, x_name=x_name,
+            y_name=y_name)
 
     elif sheet == None and z_name != None:
         df = DataFrame(read_excel(workbook, engine='openpyxl'))
         df.to_csv(plot_excel)
         plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
-            output=shapefile, event=event_data, x_name=x_name, y_name=y_name, 
-            z_name=z_name)
+            output=shapefile, event_data=event_data, x_name=x_name,
+            y_name=y_name, z_name=z_name)
 
     elif sheet != None and z_name != None:
         df = DataFrame(read_excel(workbook, sheet_name=sheet,
             engine='openpyxl'))
         df.to_csv(plot_excel)
         plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
-            output=shapefile, event=event_data, x_name=x_name, y_name=y_name, 
-            z_name=z_name)
+            output=shapefile, event_data=event_data, x_name=x_name,
+            y_name=y_name, z_name=z_name)
 
     os.remove(plot_excel)
 
