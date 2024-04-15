@@ -18,7 +18,7 @@ def add_map(directory, filename, option, quantity, template=None):
     option: str
         clone - replicate the .aprx file in 'filename' to produce a similar map
         scratch - create a new .aprx file with default layers per a template
-    quantity: str
+    quantity: int
         enter a value of '1' to create one .aprx file; enter a value greater
         than '1' to create a series of .aprx files; several hundred maps can
         be created at once, or more if your project requires it
@@ -31,11 +31,11 @@ def add_map(directory, filename, option, quantity, template=None):
     from pyxidust.config import PROJECTS
     # if option == 'clone' no template argument is provided
     add_map(directory=f'{PROJECTS}\\20232179_GPSPoints',
-        filename='20232179-0003_GPSPoints.aprx', option='clone', quantity='3')
+        filename='20232179-0003_GPSPoints.aprx', option='clone', quantity=3)
     # if option == 'scratch' provide only one template size
     add_map(directory=f'{PROJECTS}\\20232179_GPSPoints',
         filename='20232179-0002_GPSPoints.aprx', option='scratch', 
-        quantity='99', template='L_08x11')
+        quantity=99, template='L_08x11')
     """
 
     import os
@@ -85,7 +85,7 @@ def add_map(directory, filename, option, quantity, template=None):
 
     # new projects per incremental serials
     serial_new = new_serial(serial_last)
-    for _ in range(0, int(quantity)):
+    for _ in range(0, quantity):
         _create_project()
         serial_new = new_serial(serial_new)
 
@@ -156,9 +156,9 @@ def create_index(directory):
 
     # use ID/project object to get/write ID/attributes to list
     for identifier, project in enumerate(projects, start=1):
-        for _maps in project.listMaps():
-            map_frames.append(f'{str(identifier)}|{_maps.name}')
-            for layer in _maps.listLayers():
+        for map_ in project.listMaps():
+            map_frames.append(f'{str(identifier)}|{map_.name}')
+            for layer in map_.listLayers():
                 map_layers.append(f'{str(identifier)}|{layer.name}')
         for layout in project.listLayouts():
             map_layouts.append(f'{str(identifier)}|{layout.name}')
@@ -220,7 +220,7 @@ def delete_project(directory):
 
     import os
     import shutil
-    from mamba.config import DEFAULT_FILES, DEFAULT_FOLDERS
+    from pyxidust.config import DEFAULT_FILES, DEFAULT_FOLDERS
 
     for root, folders, files in os.walk(directory):
         for folder in folders:
@@ -268,13 +268,13 @@ def get_metadata(extension, directory):
                 unix_time = os.path.getmtime(location)
                 utc_time = datetime.datetime.utcfromtimestamp(unix_time)
                 time.append(utc_time)
-                df1 = DataFrame(name, columns=['FILE_NAME'])
-                df2 = DataFrame(path, columns=['FILE_PATH'])
-                df3 = DataFrame(time, columns=['LAST_MODIFIED'])
-                df4 = concat([df1, df2, df3], axis='columns')
+                df1 = DataFrame(data=name, columns=['FILE_NAME'])
+                df2 = DataFrame(data=path, columns=['FILE_PATH'])
+                df3 = DataFrame(data=time, columns=['LAST_MODIFIED'])
+                df4 = concat(objs=[df1, df2, df3], axis='columns')
                 df4.index += 1
                 df4.index.name = 'ID'
-                df5 = df4.to_csv(rf'{directory}\\Catalog.csv')
+                df5 = df4.to_csv(path_or_buf=rf'{directory}\\Catalog.csv')
 
 ###############################################################################
 
@@ -292,20 +292,16 @@ def get_serial():
 
 ###############################################################################
 
-def import_map(pro_obj, mxd, serial_file, serial_number=None):
+def import_map(project, mxd, serial_number=None):
     """Converts a layout in a .mxd file to the ArcGIS PRO format and assigns
     a serial number to the new map/layout.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     mxd: path
         Fully-qualified/raw file path to a .mxd file
-    serial_file: path
-        Fully-qualified/raw file path to a .txt file containing one-line of
-        text representing a base serial number in format 'YYYYRRRR' where
-        'YYYY' is the four-digit year and 'RRRR' is the global ID.
     serial_number: str
         Serial number in format 'YYYYRRRR' or 'YYYYRRRR-CCCC' where 'YYYY' is
         the four-digit year, 'RRRR' is the global ID, and 'CCCC' is a counter
@@ -318,8 +314,7 @@ def import_map(pro_obj, mxd, serial_file, serial_number=None):
     ------
     import arcpy
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    import_map(pro_obj=project_, mxd=r'\\.mxd', serial_file=r'\\.txt',
-        serial_number='20201234-0001')
+    import_map(project=project_, mxd=r'\\.mxd', serial_number='20201234-0001')
     """
 
     import arcpy
@@ -328,36 +323,33 @@ def import_map(pro_obj, mxd, serial_file, serial_number=None):
     if serial_number == None:
         serial_new = new_serial()
     else:
-        serial_new = new_serial(serial_number)
+        serial_new = new_serial(serial_number)    
 
-    # close open items
-    _project = pro_obj
-    _project.closeViews()
-
-    # get existing maps/layouts
-    maps_old = _project.listMaps()
-    layouts_old = _project.listLayouts()
+    # close open items/get existing maps/layouts
+    project.closeViews()
+    maps_old = project.listMaps()
+    layouts_old = project.listLayouts()
 
     # new map.name == .mxd dataframe name
     # new layout.name == .mxd filename
-    _project.importDocument(document_path=mxd)
-    _project.save()
+    project.importDocument(document_path=mxd)
+    project.save()
 
     # get total maps/layouts
-    maps_total = _project.listMaps()
-    layouts_total = _project.listLayouts()
+    maps_total = project.listMaps()
+    layouts_total = project.listLayouts()
 
-    # get/rename new map objects
-    for _map in maps_total:
-        if _map not in maps_old:
-            _map.name = serial_new
+    # get/rename new map objects   
+    for map_ in maps_total:
+        if map_ not in maps_old:
+            map_.name = serial_new
 
     # get/rename new layout objects
-    for _layout in layouts_total:
-        if _layout not in layouts_old:
-            _layout.name = serial_new
+    for layout in layouts_total:
+        if layout not in layouts_old:
+            layout.name = serial_new
 
-    _project.save()
+    project.save()
 
 ###############################################################################
 
@@ -402,8 +394,8 @@ def memory_swap(project):
 
     project_path = project.filePath
     del project
-    new_project = arcpy.mp.ArcGISProject(project_path)
-    return new_project
+    project_new = arcpy.mp.ArcGISProject(project_path)
+    return project_new
 
 ###############################################################################
 
@@ -487,8 +479,8 @@ def new_project(function):
         archive_project()
         validate_project(description, name, template)
         serial = get_serial()
-        folder_name, map_name, map_serial = log_project(
-            description, name, serial)
+        folder_name, map_name, map_serial = log_project(description,
+            name, serial)
         directory = create_folder(folder_name, map_name, template)
         name_elements(directory, map_name, map_serial, name)
 
@@ -549,13 +541,13 @@ def new_serial(serial=None):
 
 ###############################################################################
 
-def set_default(pro_obj, home, gdb, toolbox):
+def set_default(project, home, gdb, toolbox):
     """Updates home folder/default geodatabase/toolbox in an ArcGIS PRO
     project.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     home: path
         path to a new home folder for the PRO project
@@ -569,19 +561,17 @@ def set_default(pro_obj, home, gdb, toolbox):
     import arcpy
     from pyxidust.projects import set_default
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    set_default(pro_obj=project_, home=r'\\folder', gdb=r'\\.gdb',
+    set_default(project=project_, home=r'\\folder', gdb=r'\\.gdb',
         toolbox=r'\\.tbx')
     """
     
     import arcpy
-    
-    _project = pro_obj
 
-    _project.homeFolder = home
-    _project.defaultGeodatabase = gdb
-    _project.defaultToolbox = toolbox
+    project.homeFolder = home
+    project.defaultGeodatabase = gdb
+    project.defaultToolbox = toolbox
 
-    _project.save()
+    project.save()
 
 ###############################################################################
 

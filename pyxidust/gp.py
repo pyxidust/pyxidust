@@ -2,17 +2,18 @@
 # Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
 ###############################################################################
 
-def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
+def add_data(project, map_name, option, layers=None, layer_index=None,
+    gdb=None):
     """Adds data to a map in an ArcGIS PRO project.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     map_name: str
         map name as it appears in the catalog pane (default is 'Map')
-    option/description/layers/lyr_idx/gdb:
-        '1' - description:
+    option/description/layers/layer_index/gdb:
+        1 - description:
                 add one layer from disk to an indexed position in the TOC
             layers:
                 path to a shapefile or feature class on disk
@@ -21,7 +22,7 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
                 use 0 for top, or 1, 2, ... to position above layer in TOC
             gdb:
                 None
-        '2' - description:
+        2 - description:
                 add multiple layers to the top of the TOC
             layers:
                 list of feature class names in the gdb
@@ -29,7 +30,7 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
                 None
             gdb:
                 path to a geodatabase
-        '3' - description:
+        3 - description:
                 add all feature classes from a gdb to the top of the TOC
             layers:
                 None
@@ -37,7 +38,7 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
                 None
             gdb:
                 path to a geodatabase
-        '4' - description:
+        4 - description:
                 add a layer file from disk to the top of the TOC
             layers:
                 path to a layer file on disk
@@ -45,7 +46,7 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
                 None
             gdb:
                 None
-        '5' - description:
+        5 - description:
                 add a layer file from disk to an indexed group layer
             layers:
                 path to a layer file on disk
@@ -59,30 +60,29 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
     import arcpy
     project = arcpy.mp.ArcGISProject(r'.aprx')
     # add layer to top of table of contents
-    add_data(pro_obj=project, map_name='Map', option='1',
-        layers=r'Shapefile.shp', lyr_idx=0, gdb=None)
+    add_data(project=project, map_name='Map', option=1,
+        layers=r'Shapefile.shp', layer_index=0, gdb=None)
     # nest layer within table of contents
-    add_data(pro_obj=project, map_name='Map', option='1',
-        layers=r'Shapefile.shp', lyr_idx=3, gdb=None)
+    add_data(project=project, map_name='Map', option=1,
+        layers=r'Shapefile.shp', layer_index=3, gdb=None)
     # add multiple layers to top of table of contents
-    add_data(pro_obj=project, map_name='Map', option='2',
-        layers=['Points', 'Polygons'], lyr_idx=None, gdb=r'GDB.gdb')
+    add_data(project=project, map_name='Map', option=2,
+        layers=['Points', 'Polygons'], layer_index=None, gdb=r'GDB.gdb')
     # add all feature classes from gdb to top of table of contents
-    add_data(pro_obj=project, map_name='Map', option='3', layers=None, 
-        lyr_idx=None, gdb=r'GDB.gdb')
+    add_data(project=project, map_name='Map', option=3, layers=None, 
+        layer_index=None, gdb=r'GDB.gdb')
     # add layer file from disk to top of table of contents
-    add_data(pro_obj=project, map_name='Map', option='4',
-        layers=r'LayerFile.lyrx', lyr_idx=0, gdb=None)
+    add_data(project=project, map_name='Map', option=4,
+        layers=r'LayerFile.lyrx', layer_index=0, gdb=None)
     # add layer file from disk to indexed group layer in table of contents
-    add_data(pro_obj=project, map_name='Map', option='5',
-        layers=r'LayerFile.lyrx', lyr_idx=0, gdb=None)
+    add_data(project=project, map_name='Map', option=5,
+        layers=r'LayerFile.lyrx', layer_index=0, gdb=None)
     """
 
     import os
     import arcpy
 
-    _project = pro_obj
-    _map = _project.listMaps(map_name)[0]
+    map_ = project.listMaps(map_name)[0]
 
     # enable core arc methods
     def _set_environment():
@@ -92,58 +92,58 @@ def add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None):
         arcpy.env.addOutputsToMap = True
     
     def _move_layer():
-        new_layer = _map.listLayers()[0]
-        ref_layer = _map.listLayers()[lyr_idx]
-        _map.moveLayer(reference_layer=ref_layer, move_layer=new_layer,
+        new_layer = map_.listLayers()[0]
+        ref_layer = map_.listLayers()[layer_index]
+        map_.moveLayer(reference_layer=ref_layer, move_layer=new_layer,
             insert_position='BEFORE')
     
-    if option == '1':
-        _map.addDataFromPath(layers)
-        if lyr_idx != 0:
+    if option == 1:
+        map_.addDataFromPath(layers)
+        if layer_index != 0:
             _move_layer()
     
-    if option == '2':
+    if option == 2:
         for layer in layers:
-            _map.addDataFromPath(rf'{gdb}\\{layer}')
+            map_.addDataFromPath(rf'{gdb}\\{layer}')
     
-    if option == '3':
+    if option == 3:
         _set_environment()
         for fc in arcpy.ListFeatureClasses():
-            _map.addDataFromPath(rf'{gdb}\\{fc}')
+            map_.addDataFromPath(rf'{gdb}\\{fc}')
     
-    if option == '4':
+    if option == 4:
         # layer file on disk
         layer_file = arcpy.mp.LayerFile(layers)
         # expose with listLayers to use addLayer
         for layer in layer_file.listLayers():
-            _map.addLayer(add_layer_or_layerfile=layer,
+            map_.addLayer(add_layer_or_layerfile=layer,
                 add_position='TOP')
     
-    if option == '5':
+    if option == 5:
         _set_environment()
         # group layer must exist
-        group_layer = _map.listLayers()[lyr_idx]
+        group_layer = map_.listLayers()[layer_index]
         layer_file = arcpy.mp.LayerFile(layers)
-        _map.addLayerToGroup(target_group_layer=group_layer,
+        map_.addLayerToGroup(target_group_layer=group_layer,
             add_layer_or_layerfile=layer_file)
     
-    _project.save()
+    project.save()
 
 ###############################################################################
 
-def change_source(pro_obj, dataset, layer, option, old_source, new_source):
+def change_source(project, dataset, layer, option, old_source, new_source):
     """Changes source of map layers in an ArcGIS PRO project.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     dataset: str
         layer name as it appears in the catalog pane table of contents
     layer:
         ArcGIS layer object
     option/old_source/new_source:
-        '1' - old_source: str
+        1 - old_source: str
                   path to a geodatabase for the existing data source
               new_source: str
                   path to a geodatabase for the new data source
@@ -157,21 +157,19 @@ def change_source(pro_obj, dataset, layer, option, old_source, new_source):
     # [index position of layer in TOC]
     layer_ = map_.listLayers('Points')[3]
     change_source(project=project_, dataset='Points', layer=layer_,
-        option='1', old_source=r'\\Old.gdb', new_source=r'\\New.gdb')
+        option=1, old_source=r'\\Old.gdb', new_source=r'\\New.gdb')
     """
 
     import arcpy
-    
-    _project = pro_obj
 
-    if option == '1':
+    if option == 1:
         source = {'dataset': dataset, 'workspace_factory': 'File Geodatabase',
                   'connection_info': {'database': old_source}}
         new = {'dataset': dataset, 'workspace_factory': 'File Geodatabase',
                   'connection_info': {'database': new_source}}
         layer.updateConnectionProperties(source, new, True, False, True)
 
-    _project.save()
+    project.save()
 
 ###############################################################################
 
@@ -285,7 +283,6 @@ def cubic_volume(original, current, gdb, polygons):
     ------
     USAGE:
     ------
-    from pyxidust import *
     from pyxidust.gp import cubic_volume
     cubic_volume(original=r'\\', current=r'\\', gdb=r'\\.gdb', polygons='poly')
     """
@@ -381,7 +378,7 @@ def cubic_volume(original, current, gdb, polygons):
     # get previous output with wild_card='input*'
     for fc in arcpy.ListFeatureClasses('input*'):
         # get filename suffixes
-        name_suffix = fc.split('_')
+        name_suffix = fc.split('_``')
         # extract value from tuple
         loop_value = name_suffix[1]
         # add new field to calculate labels
@@ -447,14 +444,14 @@ def excel_to_gdb(workbook, gdb, table, sheet=None):
     csv_excel = (rf'{os.getcwd()}\\excel_to_gdb.csv')
     
     if sheet != None:
-        df = DataFrame(read_excel(workbook, sheet_name=sheet,
+        df = DataFrame(data=read_excel(io=workbook, sheet_name=sheet,
             engine='openpyxl'))
-        df.to_csv(csv_excel)
+        df.to_csv(path_or_buf=csv_excel)
         TableToTable(csv_excel, gdb, table)
 
     else:
-        df = DataFrame(read_excel(workbook, engine='openpyxl'))
-        df.to_csv(csv_excel)
+        df = DataFrame(data=read_excel(io=workbook, engine='openpyxl'))
+        df.to_csv(path_or_buf=csv_excel)
         TableToTable(csv_excel, gdb, table)
 
     os.remove(csv_excel)
@@ -527,7 +524,7 @@ def features_to_csv(input_features, output_file, option, gdb=None):
     import json
     import os
     import arcpy
-    import pandas
+    # import pandas
 
     from arcpy.conversion import FeaturesToJSON
     from arcpy.stats import ExportXYv
@@ -616,7 +613,7 @@ def image_to_features(image, classes, identifier, query, crs, directory,
         path to a georeferenced image that has been registered with the 'update
         georeferencing' option applied; do not 'rectify' the image afterwards
         as it blows out the RGB color values from the original image
-    classes: str
+    classes: int
         number of raster cell groups for the Iso Cluster Unsupervised
         Classification tool; function can be run multiple times to produce the
         desired results by tweaking this value combined with the query parameter
@@ -666,8 +663,6 @@ def image_to_features(image, classes, identifier, query, crs, directory,
     arcpy.env.outputCoordinateSystem = crs
     arcpy.CheckOutExtension('SPATIAL')
 
-    classes = int(classes)
-
     # create raster for all polygons in image per classes
     boundary = IsoClusterUnsupervisedClassification(image, classes)
     boundary.save(rf'{directory}\\boundary_{identifier}')
@@ -698,16 +693,16 @@ def image_to_features(image, classes, identifier, query, crs, directory,
 
 ###############################################################################
 
-def move_elements(pro_obj, lay_obj, ele_type, wildcard):
+def move_elements(project, layout, element, wildcard):
     """Moves a selected set of elements off a layout in an ArcGIS PRO project.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
-    lay_obj:
+    layout:
         ArcGIS layout object
-    ele_type: str
+    element: str
         type of layout element to move; options are:
         GRAPHIC_ELEMENT, LEGEND_ELEMENT, MAPFRAME_ELEMENT,
         MAPSURROUND_ELEMENT, PICTURE_ELEMENT, TEXT_ELEMENT
@@ -719,39 +714,36 @@ def move_elements(pro_obj, lay_obj, ele_type, wildcard):
     ------
     project = arcpy.mp.ArcGISProject(r'.aprx')
     layout = project.listLayouts('Map')[0]
-    move_elements(pro_obj=project, lay_obj=layout,
+    move_elements(project=project, layout=layout,
         ele_type=GRAPHIC_ELEMENT, wildcard='*Info')
     """
 
     import arcpy
 
-    project = pro_obj
-    layout = lay_obj
-
-    for element in layout.listElements(ele_type, wildcard):
-        element.elementPositionX = -abs(100000.00)
-        element.elementPositionY = -abs(100000.00)
+    for i in layout.listElements(element, wildcard):
+        i.elementPositionX = -abs(100000.00)
+        i.elementPositionY = -abs(100000.00)
 
     project.save()
 
 ###############################################################################
 
-def place_anno(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust, gdb,
-    suffix, lyr_name=None):
+def place_anno(project, map_name, layout_name, frame_name, layer_index,
+    adjust, gdb, suffix, layer_name=None):
     """Sets reference scale from a layer in an ArcGIS PRO project and creates
     annotation feature classes for all layers with visible labels.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     map_name: str
         Map name as it appears in the catalog pane (default is 'Map')
-    lay_name: str
+    layout_name: str
         Layout name as it appears in the catalog pane (default is 'Layout')
-    fra_name: str
+    frame_name: str
         Frame name as it appears in the layout TOC (default is 'Map Frame')
-    lyr_idx: int
+    layer_index: int
         Index position of a layer in the map TOC layer stack (0, 1, ...)
     adjust: float
         value used to fine-tune layout scale; value will be multiplied by the
@@ -761,7 +753,7 @@ def place_anno(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust, gdb,
         output geodatabase for the annotation features
     suffix: str
         letter added to all new annotation feature class names
-    lyr_name: str
+    layer_name: str
         layer name as it appears in the table of contents (TOC); if a value
         is provided for this argument only the named layer will have
         annotations created
@@ -778,52 +770,52 @@ def place_anno(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust, gdb,
     import arcpy
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
     # returns extent, scale; unpack or call without variables
-    extent,scale = place_anno(pro_obj=project_, map_name='Map',
-        lay_name='Layout', fra_name='Map Frame', lyr_idx=0, adjust=1.1,
-        gdb=r'\\.gdb', suffix='A')
+    extent,scale = place_anno(project=project_, map_name='Map',
+        layout_name='Layout', frame_name='Map Frame', layer_index=0,
+        adjust=1.1, gdb=r'\\.gdb', suffix='A')
     """
 
     import arcpy
     from arcpy.cartography import ConvertLabelsToAnnotation
     
-    _project = pro_obj
-    _map = _project.listMaps(map_name)[0]
-    _layout = _project.listLayouts(lay_name)[0]
-    _frame = _layout.listElements('MAPFRAME_ELEMENT', fra_name)[0]
-    _layer = _map.listLayers()[lyr_idx]
+    project = project
+    map_ = project.listMaps(map_name)[0]
+    layout = project.listLayouts(layout_name)[0]
+    frame = layout.listElements('MAPFRAME_ELEMENT', frame_name)[0]
+    layer = map_.listLayers()[layer_index]
     
-    _extent = _frame.getLayerExtent(_layer, True)
-    _frame.camera.setExtent(_extent)
-    _frame.camera.scale *= adjust
-    arcpy.env.referenceScale = _frame.camera.scale
-    _map.referenceScale = arcpy.env.referenceScale
-    scale = _map.referenceScale
+    extent = frame.getLayerExtent(layer, True)
+    frame.camera.setExtent(extent)
+    frame.camera.scale *= adjust
+    arcpy.env.referenceScale = frame.camera.scale
+    map_.referenceScale = arcpy.env.referenceScale
+    scale = map_.referenceScale
 
-    _project.save()
+    project.save()
     
-    if lyr_name == None:
-        ConvertLabelsToAnnotation(input_map=_map, conversion_scale=scale,
-            output_geodatabase=gdb, anno_suffix=suffix, extent=_extent,
+    if layer_name == None:
+        ConvertLabelsToAnnotation(input_map=map_, conversion_scale=scale,
+            output_geodatabase=gdb, anno_suffix=suffix, extent=extent,
             generate_unplaced='GENERATE_UNPLACED')
     
-    if lyr_name != None:
-        ConvertLabelsToAnnotation(input_map=_map, conversion_scale=scale,
-            output_geodatabase=gdb, anno_suffix=suffix, extent=_extent,
+    if layer_name != None:
+        ConvertLabelsToAnnotation(input_map=map_, conversion_scale=scale,
+            output_geodatabase=gdb, anno_suffix=suffix, extent=extent,
             generate_unplaced='GENERATE_UNPLACED', which_layers='SINGLE_LAYER',
-            single_layer=lyr_name)
+            single_layer=layer_name)
     
-    return _extent, scale
+    return extent, scale
 
 ###############################################################################
 
-def plot_csv(pro_obj, map_name, csv, crs, output, event_data, x_name, y_name,
+def plot_csv(project, map_name, csv, crs, output, event_data, x_name, y_name,
     z_name=None):
     """Converts X/Y/Z coordinates in a .csv file to a shapefile and adds it to
     a map in an ArcGIS PRO project.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     map_name: str
         Map name as it appears in the catalog pane (default is 'Map')
@@ -853,7 +845,7 @@ def plot_csv(pro_obj, map_name, csv, crs, output, event_data, x_name, y_name,
     from pyxidust.gp import plot_csv
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
     # z-values are optional
-    plot_csv(pro_obj=project_, map_name='Map', csv=r'\\.csv', crs=r'\\.prj',
+    plot_csv(project=project_, map_name='Map', csv=r'\\.csv', crs=r'\\.prj',
         output=r'\\.shp', event_data='XYEvent_CSV_Plot', x_name='X', y_name='Y',
         z_name=None='Z')
     """
@@ -866,8 +858,7 @@ def plot_csv(pro_obj, map_name, csv, crs, output, event_data, x_name, y_name,
     letter = random.choice(LETTERS)
     plot = (f'Plot_{letter}')
     
-    _project = pro_obj
-    _map = _project.listMaps(map_name)[0]
+    map_ = project.listMaps(map_name)[0]
     
     if z_name != None:
         arcpy.management.MakeXYEventLayer(table=csv, in_x_field=x_name,
@@ -885,14 +876,14 @@ def plot_csv(pro_obj, map_name, csv, crs, output, event_data, x_name, y_name,
         out_layer=plot)
     
     # arcpy.mp layer object
-    _layer = features_csv.getOutput(0)
-    _map.addLayer(_layer)
+    layer = features_csv.getOutput(0)
+    map_.addLayer(layer)
 
-    _project.save()
+    project.save()
 
 ###############################################################################
 
-def plot_excel(workbook, pro_obj, map_name, crs, shapefile, event_data, x_name,
+def plot_excel(workbook, project, map_name, crs, shapefile, event_data, x_name,
     y_name, z_name=None, sheet=None):
     """Converts X/Y/Z coordinates in a spreadsheet workbook to a shapefile and
     adds it to a map in an ArcGIS PRO project.
@@ -901,7 +892,7 @@ def plot_excel(workbook, pro_obj, map_name, crs, shapefile, event_data, x_name,
     -----------
     workbook: path
         path to a spreadsheet workbook in xls/xlsx/xlsm/xlsb/odf/ods/odt format
-    pro_obj:
+    project:
         ArcGIS project object
     map_name: str
         Map name as it appears in the catalog pane (default is 'Map')
@@ -932,7 +923,7 @@ def plot_excel(workbook, pro_obj, map_name, crs, shapefile, event_data, x_name,
     from pyxidust.gp import plot_excel
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
     # z-values and sheet name are optional
-    plot_excel(workbook=r'\\.xlsx', pro_obj=project_, map_name='Map',
+    plot_excel(workbook=r'\\.xlsx', project=project_, map_name='Map',
         crs=r'\\.prj', shapefile=r'\\.shp', event_data='XYEvent_PlotExcel', 
         x_name='X', y_name='Y', z_name='Z',
         sheet='Sheet1')
@@ -944,32 +935,32 @@ def plot_excel(workbook, pro_obj, map_name, crs, shapefile, event_data, x_name,
     plot_excel = (rf'{os.getcwd()}\\excel_plot.csv')
     
     if sheet == None and z_name == None:
-        df = DataFrame(read_excel(workbook, engine='openpyxl'))
-        df.to_csv(plot_excel)
-        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
+        df = DataFrame(data=read_excel(io=workbook, engine='openpyxl'))
+        df.to_csv(path_or_buf=plot_excel)
+        plot_csv(project=project, map_name=map_name, csv=plot_excel, crs=crs,
             output=shapefile, event_data=event_data, x_name=x_name,
             y_name=y_name)
 
     elif sheet != None and z_name == None:
-        df = DataFrame(read_excel(workbook, sheet_name=sheet,
+        df = DataFrame(data=read_excel(io=workbook, sheet_name=sheet,
             engine='openpyxl'))
-        df.to_csv(plot_excel)
-        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
+        df.to_csv(path_or_buf=plot_excel)
+        plot_csv(project=project, map_name=map_name, csv=plot_excel, crs=crs,
             output=shapefile, event_data=event_data, x_name=x_name,
             y_name=y_name)
 
     elif sheet == None and z_name != None:
-        df = DataFrame(read_excel(workbook, engine='openpyxl'))
-        df.to_csv(plot_excel)
-        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
+        df = DataFrame(data=read_excel(io=workbook, engine='openpyxl'))
+        df.to_csv(path_or_buf=plot_excel)
+        plot_csv(project=project, map_name=map_name, csv=plot_excel, crs=crs,
             output=shapefile, event_data=event_data, x_name=x_name,
             y_name=y_name, z_name=z_name)
 
     elif sheet != None and z_name != None:
-        df = DataFrame(read_excel(workbook, sheet_name=sheet,
+        df = DataFrame(data=read_excel(io=workbook, sheet_name=sheet,
             engine='openpyxl'))
-        df.to_csv(plot_excel)
-        plot_csv(pro_obj=pro_obj, map_name=map_name, csv=plot_excel, crs=crs,
+        df.to_csv(path_or_buf=plot_excel)
+        plot_csv(project=project, map_name=map_name, csv=plot_excel, crs=crs,
             output=shapefile, event_data=event_data, x_name=x_name,
             y_name=y_name, z_name=z_name)
 
@@ -977,42 +968,40 @@ def plot_excel(workbook, pro_obj, map_name, crs, shapefile, event_data, x_name,
 
 ###############################################################################
 
-def print_info(pro_obj):
+def print_info(project):
     """Prints map/layout/layer names and data sources in an ArcGIS PRO project.
     Useful for troublesome projects that will not open due to memory issues.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     ------
     USAGE:
     ------
     import arcpy
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    print_info(pro_obj=project_)
+    print_info(project=project_)
     """
     
     import arcpy
-    
-    _project = pro_obj
 
-    print(f'Layout names: {[i.name for i in _project.listLayouts()]}\n')
+    print(f'Layout names: {[i.name for i in project.listLayouts()]}\n')
     
-    for _id, _map in enumerate(_project.listMaps(), start=1):
-        for _layer in _map.listLayers():
-            if _layer.isFeatureLayer:
-                print(f'Map #{_id} ({_map.name})')
-                print(f'{_layer.name} layer source: {_layer.dataSource}')
+    for id_, map_ in enumerate(project.listMaps(), start=1):
+        for layer in map_.listLayers():
+            if layer.isFeatureLayer:
+                print(f'Map #{id_} ({map_.name})')
+                print(f'{layer.name} layer source: {layer.dataSource}')
                 
 ###############################################################################
 
-def print_layers(pro_obj, map_name):
+def print_layers(project, map_name):
     """Prints the properties of all layers in a map in an ArcGIS PRO project.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     map_name: str
         Map name as it appears in the catalog pane (default is 'Map')
@@ -1021,172 +1010,171 @@ def print_layers(pro_obj, map_name):
     ------
     import arcpy
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    print_layers(pro_obj=project_, map_name='Map')
+    print_layers(project=project_, map_name='Map')
     """
     
     import arcpy
     
-    _project = pro_obj
-    _map = _project.listMaps(map_name)[0]
-    _layers = _map.listLayers()
+    map_ = project.listMaps(map_name)[0]
+    layers = map_.listLayers()
     
-    for _layer in _layers:
+    for layer in layers:
 
-        if _layer.isGroupLayer == False:
+        if layer.isGroupLayer == False:
             print(f'\n{"_"*79}\n\n')
             
             try:
-                if _layer.supports('NAME'):
-                    print(f'Layer name: {_layer.name}')
+                if layer.supports('NAME'):
+                    print(f'Layer name: {layer.name}')
             except Exception as e:
                 print(e)
                 
             try:
-                if _layer.supports('LONGNAME'):
-                    print(f'Group name: {_layer.longName}')
+                if layer.supports('LONGNAME'):
+                    print(f'Group name: {layer.longName}')
             except Exception as e:
                 print(e)
                 
             try:
-                if _layer.is3DLayer:
+                if layer.is3DLayer:
                     print(f'3D layer = True')
             except Exception as e:
                 print(e)
                 
             try:
-                if _layer.isWebLayer:
+                if layer.isWebLayer:
                     print(f'Web layer = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.isSceneLayer:
+                if layer.isSceneLayer:
                     print(f'Scene layer = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.isTimeEnabled:
+                if layer.isTimeEnabled:
                     print(f'Time enabled = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.isRasterLayer:
+                if layer.isRasterLayer:
                     print(f'Raster layer = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.isBasemapLayer:
+                if layer.isBasemapLayer:
                     print(f'Basemap layer = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.isFeatureLayer:
+                if layer.isFeatureLayer:
                     print(f'Feature layer = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.isBroken:
+                if layer.isBroken:
                     print(f'Broken data source = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.supports('VISIBLE'):
-                    print(f'Visible = {_layer.visible}')
+                if layer.supports('VISIBLE'):
+                    print(f'Visible = {layer.visible}')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.isNetworkAnalystLayer:
+                if layer.isNetworkAnalystLayer:
                     print(f'Network analyst layer = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.isNetworkDatasetLayer:
+                if layer.isNetworkDatasetLayer:
                     print(f'Network dataset layer = True')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.supports('SHOWLABELS'):
-                    print(f'Labels on = {_layer.showLabels}')
+                if layer.supports('SHOWLABELS'):
+                    print(f'Labels on = {layer.showLabels}')
             except Exception as e:
                 print(e)
 
             print(f'\n{"_"*79}\n\n')
             
             try:
-                if _layer.supports('TIME'):
-                    print(f'Time: {_layer.time}')
+                if layer.supports('TIME'):
+                    print(f'Time: {layer.time}')
             except Exception as e:
                 print(e)
             
             try:
-                if _layer.supports('CONTRAST'):
-                    print(f'Contrast: {_layer.contrast}')
+                if layer.supports('CONTRAST'):
+                    print(f'Contrast: {layer.contrast}')
             except Exception as e:
                 print(e)
             
             try:
-                if _layer.supports('BRIGHTNESS'):
-                    print(f'Brightness: {_layer.brightness}')
+                if layer.supports('BRIGHTNESS'):
+                    print(f'Brightness: {layer.brightness}')
             except Exception as e:
                 print(e)
             
             try:
-                if _layer.supports('TRANSPARENCY'):
-                    print(f'Transparency: {_layer.transparency}')
+                if layer.supports('TRANSPARENCY'):
+                    print(f'Transparency: {layer.transparency}')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.supports('MINTHRESHOLD'):
-                    print(f'Min display scale: {_layer.minThreshold}')
+                if layer.supports('MINTHRESHOLD'):
+                    print(f'Min display scale: {layer.minThreshold}')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.supports('MAXTHRESHOLD'):
-                    print(f'Max display scale: {_layer.maxThreshold}')
+                if layer.supports('MAXTHRESHOLD'):
+                    print(f'Max display scale: {layer.maxThreshold}')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.supports('DEFINITIONQUERY'):
-                    print(f'Query: {_layer.definitionQuery}')
+                if layer.supports('DEFINITIONQUERY'):
+                    print(f'Query: {layer.definitionQuery}')
             except Exception as e:
                 print(e)
 
             print(f'\n{"_"*79}\n\n')
 
             try:
-                if _layer.supports('URI'):
-                    print(f'Universal resource indicator: {_layer.URI}')
+                if layer.supports('URI'):
+                    print(f'Universal resource indicator: {layer.URI}')
             except Exception as e:
                 print(e)
                 
             try:
-                if _layer.supports('DATASOURCE'):
-                    print(f'Source: {_layer.dataSource}')
+                if layer.supports('DATASOURCE'):
+                    print(f'Source: {layer.dataSource}')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.supports('CONNECTIONPROPERTIES'):
-                    print(f'Connection: {_layer.connectionProperties}')
+                if layer.supports('CONNECTIONPROPERTIES'):
+                    print(f'Connection: {layer.connectionProperties}')
             except Exception as e:
                 print(e)
 
             try:
-                if _layer.supports('METADATA'):
+                if layer.supports('METADATA'):
                     print(f'\n{"_"*79}\n\n')
-                    meta = _layer.metadata
+                    meta = layer.metadata
                     print(f'Metadata title: {meta.title}')
                     print(f'Metadata description: {meta.description}')
             except Exception as e:
@@ -1194,14 +1182,14 @@ def print_layers(pro_obj, map_name):
 
 ###############################################################################
 
-def remove_layers(pro_obj, map_obj, layers):
+def remove_layers(project, map_, layers):
     """Removes layers from a map in an ArcGIS PRO project.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
-    map_obj:
+    map_:
         ArcGIS map object
     layers: set
         Layer names in the table of contents to remove from the map
@@ -1211,35 +1199,32 @@ def remove_layers(pro_obj, map_obj, layers):
     import arcpy
     project = arcpy.mp.ArcGISProject(path)
     map_ = project.listMaps('Map')[0]
-    remove_layers(pro_obj=project, map_obj=map_, layers={'Hydro', 'Points'})
+    remove_layers(project=project, map_=map_, layers={'Hydro', 'Points'})
     """
 
     import arcpy
 
-    _project = pro_obj
-    _map = map_obj
-
-    for layer in _map.listLayers():
+    for layer in map_.listLayers():
         if layer.isFeatureLayer:
             if layer.name in layers:
-                _layer = _map.listLayers(layer.name)[0]
-                _map.removeLayer(_layer)
+                layer_remove = map_.listLayers(layer.name)[0]
+                map_.removeLayer(layer_remove)
 
-    _project.save()
+    project.save()
 
 ###############################################################################
 
-def visible_layers(pro_obj, map_name, lyr_idx, option=None):
+def visible_layers(project, map_name, layer_index, option=None):
     """Turns on/off layers in a map in an ArcGIS PRO project if the layer index
     position is found in the input list.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     map_name: str
         Map name as it appears in the catalog pane (default is 'Map')
-    lyr_idx: list
+    layer_index: list[int]
         List of integers representing index positions of layers in the map
         table of contents layer stack to turn off
     option: str
@@ -1250,42 +1235,40 @@ def visible_layers(pro_obj, map_name, lyr_idx, option=None):
     ------
     import arcpy
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    visible_layers(pro_obj=project_, map_name='Map', lyr_idx=[0,1,2])
+    visible_layers(project=project_, map_name='Map', layer_index=[0,1,2])
     """
 
     import arcpy
 
-    _project = pro_obj
-    _map = _project.listMaps(map_name)[0]
+    map_ = project.listMaps(map_name)[0]
 
-    for element in lyr_idx:
-        index = int(element)
-        _layer = _map.listLayers()[index]
-        if _layer.isFeatureLayer:
+    for element in layer_index:
+        layer = map_.listLayers()[element]
+        if layer.isFeatureLayer:
             if option == 'on':
-                _layer.visible = True
+                layer.visible = True
             else:
-                _layer.visible = False
+                layer.visible = False
 
-    _project.save()
+    project.save()
 
 ###############################################################################
 
-def zoom_to(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust):
+def zoom_to(project, map_name, layout_name, frame_name, layer_index, adjust):
     """Sets reference scale from a layer in an ArcGIS PRO project and zooms the
     layout to the layer extent.
     -----------
     PARAMETERS:
     -----------
-    pro_obj:
+    project:
         ArcGIS project object
     map_name: str
         Map name as it appears in the catalog pane (default is 'Map')
-    lay_name: str
+    layout_name: str
         Layout name as it appears in the catalog pane (default is 'Layout')
-    fra_name: str
+    frame_name: str
         Frame name as it appears in the layout TOC (default is 'Map Frame')
-    lyr_idx: int
+    layer_index: int
         Index position of a layer in the map TOC layer stack (0, 1, ...)
     adjust: float
         value used to fine-tune layout scale; value will be multiplied by the
@@ -1296,25 +1279,24 @@ def zoom_to(pro_obj, map_name, lay_name, fra_name, lyr_idx, adjust):
     ------
     import arcpy
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    zoom_to(pro_obj=project_, map_name='Map', lay_name='Layout',
-        fra_name='Map Frame', lyr_idx=0, adjust=1.1)
+    zoom_to(project=project_, map_name='Map', layout_name='Layout',
+        frame_name='Map Frame', layer_index=0, adjust=1.1)
     """
     
     import arcpy
     
-    _project = pro_obj
-    _map = _project.listMaps(map_name)[0]
-    _layout = _project.listLayouts(lay_name)[0]
-    _frame = _layout.listElements('MAPFRAME_ELEMENT', fra_name)[0]
-    _layer = _map.listLayers()[lyr_idx]
+    map_ = project.listMaps(map_name)[0]
+    layout = project.listLayouts(layout_name)[0]
+    frame = layout.listElements('MAPFRAME_ELEMENT', frame_name)[0]
+    layer = map_.listLayers()[layer_index]
     
-    _extent = _frame.getLayerExtent(_layer, True)
-    _frame.camera.setExtent(_extent)
-    _frame.camera.scale *= adjust
-    arcpy.env.referenceScale = _frame.camera.scale
-    _map.referenceScale = arcpy.env.referenceScale
-    scale = _map.referenceScale
+    extent = frame.getLayerExtent(layer, True)
+    frame.camera.setExtent(extent)
+    frame.camera.scale *= adjust
+    arcpy.env.referenceScale = frame.camera.scale
+    map_.referenceScale = arcpy.env.referenceScale
+    scale = map_.referenceScale
 
-    _project.save()
+    project.save()
     
-    return _extent, scale
+    return extent, scale
