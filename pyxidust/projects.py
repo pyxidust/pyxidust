@@ -1,5 +1,6 @@
 # Pyxidust: geoprocessing/lidar/project tools for ESRI ArcGIS PRO software
 # Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
+"""..."""
 ###############################################################################
 
 def add_map(directory, filename, option, quantity, template=None):
@@ -8,9 +9,9 @@ def add_map(directory, filename, option, quantity, template=None):
     any .aprx file in the directory as a template and the last .aprx file in
     the directory will determine the last used serial number. This acts as a 
     guard to prevent users from overwriting existing files.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     directory: str
         path to a project folder
     filename: str
@@ -25,9 +26,9 @@ def add_map(directory, filename, option, quantity, template=None):
     template: str
         desired orientation and map size for new .aprx layouts; sizes match the
         templates in 'pyxidust/templates/newproject/templates'
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     from pyxidust.config import PROJECTS
     # if option == 'clone' no template argument is provided
     add_map(directory=f'{PROJECTS}\\20232179_GPSPoints',
@@ -129,14 +130,14 @@ def create_folder(folder_name, map_name, template):
 def create_index(directory):
     """Joins file metadata (name/path/modified) with layers/layouts/maps via a
     global ID for each .aprx file in the specified directory.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     directory: path
         path to a directory containing files with an .aprx extension
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     from pyxidust.gp import create_index
     create_index(directory=r'\\folder')
     """
@@ -207,14 +208,14 @@ def create_index(directory):
 def delete_project(directory):
     """Deletes .aprx file and associated data for workflows that do not require
     a pro project.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     directory: str
         path to a folder containing a pro project structure
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     delete_project(directory=r'\\')
     """
 
@@ -236,16 +237,16 @@ def delete_project(directory):
 
 def get_metadata(extension, directory):
     """Crawls a directory and returns metadata per a certain file extension.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     extension: str
         file extension to search for in the directory
     directory: path
         path to a directory containing files of a certain extension
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     from pyxidust.gp import get_metadata
     get_metadata(extension='.jpg', directory=r'\\folder')
     """
@@ -295,9 +296,9 @@ def get_serial():
 def import_map(project, mxd, serial_number=None):
     """Converts a layout in a .mxd file to the ArcGIS PRO format and assigns
     a serial number to the new map/layout.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     project:
         ArcGIS project object
     mxd: path
@@ -309,9 +310,9 @@ def import_map(project, mxd, serial_number=None):
         is equal to None, a new serial number will be generated using the base
         number in the .txt file. Supports '-0000' counter values up to 9999. At
         9999, a new serial number will be generated using a '-0001' suffix.
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     import arcpy
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
     import_map(project=project_, mxd=r'\\.mxd', serial_number='20201234-0001')
@@ -320,7 +321,7 @@ def import_map(project, mxd, serial_number=None):
     import arcpy
 
     # choose serial number format
-    if serial_number == None:
+    if serial_number is None:
         serial_new = new_serial()
     else:
         serial_new = new_serial(serial_number)    
@@ -376,14 +377,14 @@ def log_project(description, name, serial):
 def memory_swap(project):
     """Deletes an existing ArcGIS PRO project object and returns a replacement.
     Acts as a file lock workaround and alternative to project.saveACopy().
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     project:
         ArcGIS project object
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     import arcpy
     from pyxidust.arc import memory_swap
     project_ = arcpy.mp.ArcGISProject(r'\\')
@@ -458,18 +459,18 @@ def new_project(function):
         through all parts of the process. Use this decorator to wrap a
         geoprocessing pipeline to fully automate a workflow, or use it
         as a standalone project creation tool.
-        -----------
+        -----------------------------------------------------------------------
         PARAMETERS:
-        -----------
+        -----------------------------------------------------------------------
         description: str
             project purpose written to catalog entry
         name: str
             project title used in file/folder name
         template: str
             desired orientation and map size for new project layout
-        ------
+        -----------------------------------------------------------------------
         USAGE:
-        ------
+        -----------------------------------------------------------------------
         # *args, **kwargs = function(description, name, template)
         processed_data, results_value = geoprocessing_pipeline(
             description, name, template, data_in, values)
@@ -497,9 +498,9 @@ def new_serial(serial=None):
     """With systems that implement a serial number for record ID, compares user
     input to a .txt file containing a base serial number and increments the
     user input accordingly.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     serial: str
         Serial number in format 'YYYYRRRR' or 'YYYYRRRR-CCCC' where 'YYYY' is
         the four-digit year, 'RRRR' is the global ID, and 'CCCC' is a counter
@@ -507,9 +508,9 @@ def new_serial(serial=None):
         is equal to None, a new serial number will be generated using the base
         number in the .txt file. Supports '-0000' counter values up to 9999. At
         9999, a new serial number will be generated using a '-0001' suffix.
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     from pyxidust.projects import new_serial
     # pull a new serial number
     new_serial()
@@ -518,11 +519,11 @@ def new_serial(serial=None):
     """
 
     # pull new serial number
-    if serial == None:
+    if serial is None:
         serial_new = (f'{get_serial()}-0001')
 
     # use existing serial number
-    if serial != None:
+    if serial is not None:
         validate_serial(string=serial)
         # increment base serial number
         if len(serial) == 8:
@@ -544,9 +545,9 @@ def new_serial(serial=None):
 def set_default(project, home, gdb, toolbox):
     """Updates home folder/default geodatabase/toolbox in an ArcGIS PRO
     project.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     project:
         ArcGIS project object
     home: path
@@ -555,9 +556,9 @@ def set_default(project, home, gdb, toolbox):
         path to a new default geodatabase for the PRO project
     toolbox: path
         path to a new default toolbox for the PRO project
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     import arcpy
     from pyxidust.projects import set_default
     project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
@@ -599,7 +600,7 @@ def validate_project(description, name, template):
     elif template not in SIZES:
         error = (f'Invalid template size for {template}')
 
-    if error != None:
+    if error is not None:
         message_window(option='showerror', title='ERROR:', message=error)
         restart = "'Check user input arguments and try again'"
         message_window(option='showerror', title='ERROR:', message=restart)
@@ -609,16 +610,16 @@ def validate_project(description, name, template):
 
 def validate_serial(string):
     """Enforces population of numeric characters in a serial number.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     string: str
         serial number in format 'YYYYRRRR' or 'YYYYRRRR-CCCC' where 'YYYY' is
         the four-digit year, 'RRRR' is the global ID, and 'CCCC' is a counter
         for multiple records belonging to the same project.
-    ------
+    ---------------------------------------------------------------------------
     USAGE:
-    ------
+    ---------------------------------------------------------------------------
     from pyxidust.utils import validate_serial
     validate_serial(string='20201234-0001')
     """

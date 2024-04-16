@@ -1,0 +1,17 @@
+Vegetation density is the ratio of vegetation lidar hits to total lidar hits 
+within a unit area. To create the necessary datasets to calculate vegetation 
+density, two identical sets of tools were used with parameters adjusted in 
+each set for ground points and aboveground points. In each set, a las layer 
+was created representing ground or aboveground points using the Make LAS 
+Dataset Layer tool and used as input to the LAS Point Stats As Raster tool 
+with the point count method and a cell size 4 times the nominal point spacing 
+of the raw lidar (5.25 feet). The stats raster was used in Null and Con 
+operations via the spatial analyst IsNull and Con tools in order to assign 
+values of 0/1 for areas of data/no data. The resulting Con raster from each 
+set of tools was added using the Plus tool and converted to float-type pixel 
+values using the Float tool in order to configure the raster to properly store 
+the desired final density values of 0.00 to 1.00. In the final operation, the 
+Con raster representing the aboveground points was divided by the float 
+raster. The resulting vegetation density raster contains pixel values ranging 
+from 0.00 to 1.00 where 0.00 is an area of low density and 1.00 is an area of 
+high density. Areas of surface water contain NoData values.

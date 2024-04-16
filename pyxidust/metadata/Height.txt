@@ -1,0 +1,20 @@
+To create the digital elevation model, raw .las files were loaded into a LAS 
+dataset and used to create a LAS layer with the Make LAS Dataset Layer tool 
+(class code 2 for 'Ground'). The layer was then used as the input to the LAS 
+Dataset To Raster tool observing the following parameters: value field = 
+elevation, triangulation interpolation using natural neighbor and a 
+window-size maximum of 0, output data type = float, sampling type = 
+observations, sampling value = 50,000. These operations produced a raster 
+suitable for obtaining ground elevations in the minus operation below. To 
+create the digital surface model, raw .las files were loaded into a LAS 
+dataset and used to create a LAS layer with the Make LAS Dataset Layer tool 
+(first returns only). The layer was then used as the input to the LAS Dataset 
+to Raster tool observing the following parameters: value field = elevation, 
+binning cell assignment = maximum, binning void fill method = natural 
+neighbor, output data type = float, sampling type = observations, sampling 
+value = 50,000. These operations produced a raster suitable for obtaining 
+building/tree canopy elevations in the minus operation below. The minus tool 
+was then used to subtract the DEM from the DSM (building/tree canopy 
+elevations - ground surface elevations) to yield a raster representing the 
+height for various features across the are of interest. Pixel values represent
+the height of the feature captured within each cell.

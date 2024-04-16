@@ -1,21 +1,37 @@
 # Pyxidust
-### Geoprocessing/lidar/project tools for ArcGIS PRO.
+Geoprocessing/lidar/project tools for ArcGIS PRO.
 <br>
 
 # Dependencies
-Python 3.11+, MS Windows, ArcGIS PRO 3.0+, Pandas package
+Python 3.11+ with Pandas package, Microsoft Windows 10+, ArcGIS PRO 3.0+
 <br>
 
 # GP (Geoprocessing) Module
 ### **Add Data Function**
 Adds data to a map in an ArcGIS PRO project.
 ```py
-# add_data(pro_obj, map_name, option, layers=None, lyr_idx=None, gdb=None)
+# add_data(project, map_name, option, layers=None, layer_index=None, gdb=None)
 import arcpy
 from pyxidust.gp import add_data
-project = arcpy.mp.ArcGISProject(r'.aprx')
-add_data(pro_obj=project, map_name='Map', option='1',
-        layers=r'Shapefile.shp', lyr_idx=0, gdb=None)
+project = arcpy.mp.ArcGISProject(r'\\.aprx')
+
+# option 1: add shapefile to an indexed position in the table of contents
+add_data(project=project, map_name='Map', option=1, layers=r'\\.shp',
+    layer_index=3)
+
+# option 2: add one/multiple feature classes to top of table of contents
+add_data(project=project, map_name='Map', option=2,
+    layers=['Points', 'Polygons'], gdb=r'\\.gdb')
+
+# option 3: add all feature classes from gdb to top of table of contents
+add_data(project=project, map_name='Map', option=3, gdb=r'\\.gdb')
+
+# option 4: add layer file to top of table of contents
+add_data(project=project, map_name='Map', option=4, layers=r'\\.lyrx')
+
+# option 5: add layer file to indexed group layer in table of contents
+add_data(project=project, map_name='Map', option=5, layers=r'\\.lyrx',
+    layer_index=0)
 ```
 <br>
 
@@ -25,29 +41,35 @@ Changes source of map layers in an ArcGIS PRO project.
 # change_source(project, dataset, layer, option, old_source, new_source)
 import arcpy
 from pyxidust.gp import change_source
-project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-map_ = project_.listMaps('Map')[0]
-layer_ = map_.listLayers('Points')[3]
-change_source(project=project_, dataset='Points', layer=layer_,
-    option='1', old_source=r'\\Old.gdb', new_source=r'\\New.gdb')
+project = arcpy.mp.ArcGISProject(r'\\.aprx')
+map_ = project.listMaps('Map')[0]
+
+# [3] == index position of layer in TOC
+layer = map_.listLayers('Points')[3]
+
+# option 1: change dataset source from one GDB to another GDB
+change_source(project=project, dataset='Points', layer=layer, option=1,
+    old_source=r'\\.gdb', new_source=r'\\.gdb')
 ```
 <br>
 
 ### **Clear GDB Function**
-Removes all feature classes, rasters, and tables from a geodatabase.
+Removes all feature classes/rasters/tables from a geodatabase.
 ```py
 # clear_gdb(gdb)
 from pyxidust.gp import clear_gdb
-clear_gdb(gdb=r'GDB.gdb')
+clear_gdb(gdb=r'\\.gdb')
 ```
 <br>
 
-### **Create Index Function**
-Joins file metadata (name/path/modified) with layers/layouts/maps via a global ID for each .aprx file in the specified directory.
+### **CSV To Features Function**
+Converts X/Y data in a .csv file to ArcGIS features and removes duplicate 
+coordinate pairs.
 ```py
-# create_index(directory)
-from pyxidust.gp import create_index
-create_index(directory=r'\\folder')
+# csv_to_features(input_file, output_features, projection, event_data)
+from pyxidust.gp import csv_to_features
+csv_to_features(input_file=r'\\.csv', output_features=r'\\.shp',
+    projection=r'\\.prj', event_data='event_1')
 ```
 <br>
 
@@ -60,34 +82,30 @@ csv_to_gdb(csv=r'\\.csv', gdb=r'\\.gdb', table='Output')
 ```
 <br>
 
-### **CSV To Features Function**
-Converts X/Y data in a .csv file to ArcGIS features and removes duplicate
-coordinate pairs.
-```py
-# csv_to_features(input_file, output_features)
-csv_to_features(input_file=r'\\.csv', output_features=r'\\Points.shp')
-```
-<br>
-
 ### **Cubic Volume Function**
-Calculates volume in cubic yards using a cut/fill operation on two input
-rasters with the same cell size and coordinate system.
+Calculates change in volume between two rasters.
 ```py
 # cubic_volume(original, current, gdb, polygons)
-from pyxidust import *
 from pyxidust.gp import cubic_volume
-cubic_volume(original=r'\\', current=r'\\', gdb=r'\\.gdb', polygons='poly')
+cubic_volume(original=r'\\', current=r'\\', gdb=r'\\.gdb', polygons='Poly')
 ```
 <br>
 
 ### **Excel To GDB Function**
-Converts a Microsoft Excel workbook sheet to an ArcGIS geodatabase table.
+Converts an Excel workbook sheet to an ArcGIS geodatabase table.
 ```py
 # excel_to_gdb(workbook, gdb, table, sheet=None)
 from pyxidust.gp import excel_to_gdb
-excel_to_gdb(workbook=r'\\.xlsx', gdb=r'\\.gdb', table='Output', sheet='Sheet 1')
+excel_to_gdb(workbook=r'\\.xlsx', gdb=r'\\.gdb', table='Output',
+    sheet='Sheet 1')
 ```
 <br>
+
+
+
+
+
+
 
 ### **Explode Geometry Function**
 Exports each row of a multipart feature class.
@@ -243,39 +261,62 @@ zoom_to(pro_obj=project, map_name='Map', lay_name='Layout', fra_name='Map Frame'
 ```
 <br>
 
-# Change Log
-**0.2.0** (date):
-- The 'Arc' module has been renamed 'GP' for geoprocessing and the following
-functions added:
-add_data, change_source, clear_gdb, csv_to_features, explode_geometry,
-features_to_csv, move_elements, remove_layers
+# Changelog
+Pyxidust version 0.0.1 was released on November 10th, 2022 under a M.I.T.
+license which has since been updated to GPL3.
 
-- pyxidust.arc.turn_off has been renamed to visible_layers
+## **0.2.0** (date):
+### Added:
+- The 'Lidar' and 'Projects' modules have been added
+- pyxidust.gp.add_data
+- pyxidust.gp.change_source
+- pyxidust.gp.clear_gdb
+- pyxidust.gp.csv_to_features
+- pyxidust.gp.explode_geometry
+- pyxidust.gp.features_to_csv
+- pyxidust.gp.move_elements
+- pyxidust.gp.remove_layers
 
-- pyxidust.arc.create_index has been migrated to pyxidust.projects.create_index
-- pyxidust.arc.get_metadata has been migrated to pyxidust.projects.get_metadata
-- pyxidust.arc.set_default has been migrated to pyxidust.projects.set_default
-- pyxidust.utils.get_letters has been migrated to pyxidust.gp.get_suffix;
-- pyxidust.utils.get_metadata has been migrated to pyxidust.gp.get_metadata
-- pyxidust.utils.tk_message has been migrated to pyxidust.projects.message_window
+### Deprecated:
+- The 'Utils' module has been removed
 
-- Added the 'Lidar' module
+### Migrated:
+- pyxidust.arc.create_index >> pyxidust.projects.create_index
+- pyxidust.arc.get_metadata >> pyxidust.projects.get_metadata
+- pyxidust.arc.set_default >> pyxidust.projects.set_default
+- pyxidust.arc.turn_off >> pyxidust.gp.visible_layers
+- pyxidust.utils.get_letters >> pyxidust.gp.get_suffix
+- pyxidust.utils.get_metadata >> pyxidust.gp.get_metadata
+- pyxidust.utils.tk_message >> pyxidust.projects.message_window
 
-- Added the 'Projects' module
+### Renamed:
+- The 'Arc' module has been renamed 'GP'
 
-- Deprecated the 'Utils' module
+<br>
 
-**0.1.0** (1/23/2023):
-- Added the 'Arc' module with the following functions:
-create_index, csv_to_gdb, cubic_volume, excel_to_gdb, image_to_features,
-place_anno, plot_csv, plot_excel, print_info, print_layers, set_default,
-turn_off, zoom_to
+## **0.1.0** (1/23/2023):
+### Added:
+- pyxidust.arc.create_index
+- pyxidust.arc.csv_to_gdb
+- pyxidust.arc.cubic_volume
+- pyxidust.arc.excel_to_gdb
+- pyxidust.arc.image_to_features
+- pyxidust.arc.place_anno
+- pyxidust.arc.plot_csv
+- pyxidust.arc.plot_excel
+- pyxidust.arc.print_info
+- pyxidust.arc.print_layers
+- pyxidust.arc.set_default
+- pyxidust.arc.turn_off
+- pyxidust.arc.zoom_to
+- pyxidust.utils.get_metadata
 
-- Added the get_metadata function to the 'Utils' module
+### Renamed:
+- pyxidust.utils.file_rename >> change_name
 
-- The file_rename function in the 'Utils' module has become the change_name
-function with the same arguments
+<br>
 
-**0.0.1** (11/10/2022):
+## **0.0.1** (11/10/2022):
 - Initial release and birth of Pyxidust!
+
 <br>

@@ -1,5 +1,6 @@
 # Pyxidust: geoprocessing/lidar/project tools for ESRI ArcGIS PRO software
 # Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
+"""..."""
 ###############################################################################
 
 def aspect(output_folder):
@@ -39,9 +40,9 @@ def buildings(output_folder):
 
 def contours(output_folder, base_contour):
     """Creates a set of contour lines from a mean surface.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     base_contour: int
         base elevation contour value in feet; no contours will be created at
         elevations below the given threshold
@@ -93,9 +94,9 @@ def dem_shade(output_folder):
 
 def dem_terrain(output_folder, projection):
     """Creates a medium-resolution terrain model from raw .las files.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     projection: str
         path to a ArcGIS projection file used in the LAS To Multipoint tool
     """
@@ -167,9 +168,9 @@ def dsm_shade(output_folder):
 
 def dsm_terrain(output_folder, projection):
     """Creates a medium-resolution terrain model from raw .las files.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     projection: str
         path to a ArcGIS projection file used in the LAS To Multipoint tool
     """
@@ -228,9 +229,9 @@ def intensity(output_folder):
 
 def lasd(output_folder, projection):
     """Creates a LASD dataset for further lidar processing.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     projection: str
         path to an ArcGIS projection file of the desired output coordinate
         reference system
@@ -373,76 +374,76 @@ def slope(output_folder):
 def tree_canopy(output_folder, projection):
     """Creates high-resolution tree canopy density and hieght rasters from
     raw .las data captured with leaf-on conditions.
-    -----------
+    ---------------------------------------------------------------------------
     PARAMETERS:
-    -----------
+    ---------------------------------------------------------------------------
     projection: str
         path to a ArcGIS projection file used in the LAS To Multipoint tool
     """
-    
+
     import arcpy
     from arcpy.conversion import LasDatasetToRaster
     from arcpy.management import CreateLasDataset, LasPointStatsAsRaster
     from arcpy.management import MakeLasDatasetLayer
     from arcpy.sa import Con, Divide, Float, IsNull, Minus, Plus
-    
+
     canopy = rf'{output_folder}\\Canopy'
     # input leaf-on .las files
-    leaf_on = f'{canopy}\\LAS'
-    
-    DEM = f'{canopy}\\DEM\\dem.tif'
-    DEM_CON = f'{canopy}\\DEMCon\\demcon.tif'
-    DEM_NULL = f'{canopy}\\DEMNull\\demnull.tif'
-    DEM_STATS = f'{canopy}\\DEMStats\\demstats.tif'
-    DENSITY = f'{canopy}\\Density\\density.tif'
-    DSM = f'{canopy}\\DSM\\dsm.tif'
-    DSM_CON = f'{canopy}\\DSMCon\\dsmcon.tif'
-    DSM_NULL = f'{canopy}\\DSMNull\\dsmnull.tif'
-    DSM_STATS = f'{canopy}\\DSMStats\\dsmstats.tif'
-    FLOAT = f'{canopy}\\Float\\float.tif'
-    HEIGHT = f'{canopy}\\Height\\height.tif'
-    LASD = f'{canopy}\\LASD\\Working.lasd'
-    PLUS = f'{canopy}\\Plus\\plus.tif'
-    
+    leaf_on = rf'{canopy}\\LAS'
+
+    dem = rf'{canopy}\\DEM\\dem.tif'
+    dem_con = rf'{canopy}\\DEMCon\\demcon.tif'
+    dem_null = rf'{canopy}\\DEMNull\\demnull.tif'
+    dem_stats = rf'{canopy}\\DEMStats\\demstats.tif'
+    density = rf'{canopy}\\Density\\density.tif'
+    dsm = rf'{canopy}\\DSM\\dsm.tif'
+    dsm_con = rf'{canopy}\\DSMCon\\dsmcon.tif'
+    dsm_null = rf'{canopy}\\DSMNull\\dsmnull.tif'
+    dsm_stats = rf'{canopy}\\DSMStats\\dsmstats.tif'
+    float_ = rf'{canopy}\\Float\\float.tif'
+    height = rf'{canopy}\\Height\\height.tif'
+    lasd = rf'{canopy}\\LASD\\Working.lasd'
+    plus = rf'{canopy}\\Plus\\plus.tif'
+
     arcpy.CheckOutExtension("SPATIAL")
-    
+
     # base data
-    CreateLasDataset(leaf_on, LASD, "NO_RECURSION", "", projection,
+    CreateLasDataset(leaf_on, lasd, "NO_RECURSION", "", projection,
         "COMPUTE_STATS", "ABSOLUTE_PATHS", "NO_FILES")
-    
+
     # dem workflow
-    MakeLasDatasetLayer(LASD, "TODEM", class_code=2)
-    LasDatasetToRaster("TODEM", DEM, "ELEVATION",
+    MakeLasDatasetLayer(lasd, "TODEM", class_code=2)
+    LasDatasetToRaster("TODEM", dem, "ELEVATION",
         "TRIANGULATION NATURAL_NEIGHBOR WINDOW_SIZE MAXIMUM 0", "FLOAT",
         "OBSERVATIONS", 50000)
-    LasPointStatsAsRaster("TODEM", DEM_STATS, "POINT_COUNT", "CELLSIZE", 5.25)
-    dem_null_raster = IsNull(DEM_STATS)
-    dem_null_raster.save(DEM_NULL)
-    dem_con_raster = Con(DEM_NULL, 0, DEM_STATS)
-    dem_con_raster.save(DEM_CON)
-    
+    LasPointStatsAsRaster("TODEM", dem_stats, "POINT_COUNT", "CELLSIZE", 5.25)
+    dem_null_raster = IsNull(dem_stats)
+    dem_null_raster.save(dem_null)
+    dem_con_raster = Con(dem_null, 0, dem_stats)
+    dem_con_raster.save(dem_con)
+
     # dsm workflow
-    MakeLasDatasetLayer(LASD, "TODSM", 1)
-    LasDatasetToRaster("TODSM", DSM, "ELEVATION",
+    MakeLasDatasetLayer(lasd, "TODSM", 1)
+    LasDatasetToRaster("TODSM", dsm, "ELEVATION",
         "BINNING MAXIMUM NATURAL_NEIGHBOR", "FLOAT", "OBSERVATIONS", 50000)
-    LasPointStatsAsRaster("TODSM", DSM_STATS, "POINT_COUNT", "CELLSIZE", 5.25)
-    dsm_null_raster = IsNull(DSM_STATS)
-    dsm_null_raster.save(DSM_NULL)
-    dsm_con_raster = Con(DSM_NULL, 0, DSM_STATS)
-    dsm_con_raster.save(DSM_CON)
-    
+    LasPointStatsAsRaster("TODSM", dsm_stats, "POINT_COUNT", "CELLSIZE", 5.25)
+    dsm_null_raster = IsNull(dsm_stats)
+    dsm_null_raster.save(dsm_null)
+    dsm_con_raster = Con(dsm_null, 0, dsm_stats)
+    dsm_con_raster.save(dsm_con)
+
     # math operations
-    plus_raster - Plus(DSM_CON, DEM_CON)
-    plus_raster.save(PLUS)
-    plus_float_raster = Float(PLUS)
-    plus_float_raster.save(FLOAT)
-    divide_raster = Divide(DSM_CON, FLOAT)
-    divide_raster.save(DENSITY)
-    
+    plus_raster - Plus(dsm_con, dem_con)
+    plus_raster.save(plus)
+    plus_float_raster = Float(plus)
+    plus_float_raster.save(float_)
+    divide_raster = Divide(dsm_con, float_)
+    divide_raster.save(density)
+
     # get canopy height
-    height_raster = Minus(DSM, DEM)
-    height_raster.save(HEIGHT)
-    
+    height_raster = Minus(dsm, dem)
+    height_raster.save(height)
+
     arcpy.CheckInExtension("SPATIAL")
 
 ###############################################################################
