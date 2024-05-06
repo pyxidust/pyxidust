@@ -359,6 +359,7 @@ Moves project folders from previous year to archive folder. Called by the new
 project decorator.
 <br>
 <br>
+<br>
 
 ### **Change Element Name Function**
 Updates the text property of one layout element.
@@ -377,6 +378,7 @@ change_element_name(project=project, map_name='Map', layout_name='Layout',
 ### **Create Folder Function**
 Creates a new project directory and clones the appropriate template. Called by 
 the new project decorator.
+<br>
 <br>
 <br>
 
@@ -409,80 +411,117 @@ get_metadata(extension='.aprx', directory=r'\\')
 ```
 <br>
 
-### **Function**
+### **Get Serial Function**
+Returns a base serial number for a new project. Called by the new project 
+decorator.
+<br>
+<br>
+<br>
 
+### **Import Map Function**
+Converts a layout in an .mxd file to the ArcGIS PRO format and assigns a serial 
+number to the new map/layout.
 ```py
-# 
+# import_map(project, mxd, serial_number=None)
+import arcpy
+from pyxidust.projects import import_map
+project = arcpy.mp.ArcGISProject(r'\\.aprx')
+
+# convert mxd to new map/layout with new serial number
+import_map(project=project, mxd=r'\\.mxd')
+
+# convert mxd to new map/layout with existing serial number
+import_map(project=project, mxd=r'\\.mxd', serial_number='20240001-0001')
 ```
 <br>
 
-### **Function**
+### **Log Project Function**
+Writes project information to the catalog. Called by the new project decorator.
+<br>
+<br>
+<br>
 
+### **Memory Swap Function**
+Deletes an existing ArcGIS PRO project object and returns a replacement. Acts
+as a file lock workaround and alternative to project.saveACopy().
 ```py
-# 
+# memory_swap(project)
+import arcpy
+from pyxidust.projects import memory_swap
+project = arcpy.mp.ArcGISProject(r'\\')
+project = memory_swap(project=project)
 ```
 <br>
 
-### **Function**
-
+### **Message Window Function**
+Wrapper for TKinter messagebox windows.
 ```py
-# 
+# message_window(option, title, message)
+from pyxidust.projects import message_window
+
+# launch an error message window
+message_window(option='showerror', title='ERROR:', message='Error Found!')
 ```
 <br>
 
-### **Function**
+### **Name Elements Function**
+Updates the text property of map elements with a name/serial number. Called by 
+the new project decorator.
+<br>
+<br>
+<br>
 
+### **New Project Decorator**
+Creates a new ArcGIS PRO project and workspace. Relevant project information is 
+written to a catalog. A unique identifier cascades through all parts of the 
+process. Use this decorator to wrap a geoprocessing pipeline to fully automate
+a workflow, or use it as a standalone project creation tool.
 ```py
-# 
+# function(*args, **kwargs)
+from pyxidust.projects import new_project
+
+# *args, **kwargs are positional arguments to wrapped 'function'
+return_values = function(description, name, template, *args, **kwargs)
 ```
 <br>
 
-### **Function**
-
+### **New Serial Function**
+Generates a new serial number or increments an existing one.
 ```py
-# 
+# new_serial(serial=None)
+from pyxidust.projects import new_serial
+
+# generate a new serial number
+new_serial()
+
+# increment an existing serial number
+new_serial(serial='20231234-0001')
 ```
 <br>
 
-### **Function**
-
+### **Set Default Function**
+Updates home folder/default geodatabase/toolbox in an ArcGIS PRO project.
 ```py
-# 
+# set_default(project, home, gdb, toolbox)
+import arcpy
+from pyxidust.projects import set_default
+project = arcpy.mp.ArcGISProject(r'\\.aprx')
+set_default(project=project, home=r'\\', gdb=r'\\.gdb', toolbox=r'\\.tbx')
 ```
 <br>
 
-### **Function**
-
-```py
-# 
-```
+### **Validate Project Function**
+Performs data validation of user arguments. Called by the new project decorator.
+<br>
+<br>
 <br>
 
-### **Function**
-
+### **Validate Serial Function**
+Enforces population of numeric characters in a serial number.
 ```py
-# 
-```
-<br>
-
-### **Function**
-
-```py
-# 
-```
-<br>
-
-### **Function**
-
-```py
-# 
-```
-<br>
-
-### **Function**
-
-```py
-# 
+# validate_serial(string)
+from pyxidust.projects import validate_serial
+validate_serial(string='20201234-0001')
 ```
 <br>
 
