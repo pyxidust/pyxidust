@@ -1,6 +1,6 @@
 # Pyxidust: geoprocessing/lidar/project tools for ESRI ArcGIS PRO software
 # Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
-"""..."""
+"""Lidar automation suite for working with raw point cloud data."""
 ###############################################################################
 
 def aspect(output_folder):
@@ -445,5 +445,3 @@ def tree_canopy(output_folder, projection):
     height_raster.save(height)
 
     arcpy.CheckInExtension("SPATIAL")
-
-###############################################################################

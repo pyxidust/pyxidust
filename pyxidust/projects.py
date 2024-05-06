@@ -1,99 +1,95 @@
 # Pyxidust: geoprocessing/lidar/project tools for ESRI ArcGIS PRO software
 # Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
-"""..."""
+"""Project management/documentation and user coordination tools."""
 ###############################################################################
 
-def add_map(directory, filename, option, quantity, template=None):
-    """Adds new .aprx files to an existing project directory and increments
-    existing serial numbers. If the clone option is selected users can choose
-    any .aprx file in the directory as a template and the last .aprx file in
-    the directory will determine the last used serial number. This acts as a 
-    guard to prevent users from overwriting existing files.
+def add_map(directory, option, quantity, filename=None, template=None):
+    """Creates new .aprx files in an existing project directory via incremental
+    serial numbers. Each new .aprx file contains a new map/layout which serve
+    as variations of the base project. For example, users may create 10 copies
+    of an existing map via the 'clone' option to produce a suite of layouts
+    with minor variations (such as a property boundary overlayed on historical
+    imagery over a 40-year period). The 'scratch' option will produce a certain
+    quantity of basemaps from the 'SIZES' in the .config module to be used as
+    standalone maps for a large project (such as utility layouts per each city
+    block). The highest serial number found in the filename of an existing
+    .aprx file in the directory acts as the base for all operations.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     directory: str
-        path to a project folder
-    filename: str
-        name and extension of an .aprx file in the directory
+        path to an existing project folder
     option: str
         clone - replicate the .aprx file in 'filename' to produce a similar map
         scratch - create a new .aprx file with default layers per a template
     quantity: int
-        enter a value of '1' to create one .aprx file; enter a value greater
-        than '1' to create a series of .aprx files; several hundred maps can
-        be created at once, or more if your project requires it
+        number of new .aprx files to create via 'clone' or 'scratch'
+    filename: str
+        existing project to use as a template if option is 'clone'
     template: str
-        desired orientation and map size for new .aprx layouts; sizes match the
-        templates in 'pyxidust/templates/newproject/templates'
+        desired orientation and map size for new .aprx layouts found in the
+        'SIZES' symbol in the .config module
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     from pyxidust.config import PROJECTS
-    # if option == 'clone' no template argument is provided
-    add_map(directory=f'{PROJECTS}\\20232179_GPSPoints',
-        filename='20232179-0003_GPSPoints.aprx', option='clone', quantity=3)
-    # if option == 'scratch' provide only one template size
-    add_map(directory=f'{PROJECTS}\\20232179_GPSPoints',
-        filename='20232179-0002_GPSPoints.aprx', option='scratch', 
-        quantity=99, template='L_08x11')
+    from pyxidust.gp import add_map
+    # add three new .aprx files using a default template
+    add_map(directory=rf'{PROJECTS}\\20240001_GPSPoints', option='scratch',
+        quantity=3, template='L_08x11')
+    # clone one .aprx file many times to create a suite of layouts
+    add_map(directory=rf'{PROJECTS}\\20240001_GPSPoints', option='clone',
+        quantity=99, filename='20240001-0005_GPSPoints.aprx')
     """
 
     import os
     import shutil
     import arcpy
-    from pyxidust.config import LAYOUTS
+    from pyxidust.config import PROJECT
 
-    # filter directory and return filename of 'bottom' .aprx file
+    # get last-used/cloned serial number/title
     aprx = (([i for i in os.listdir(directory) if i.endswith('.aprx')]).pop())
-    # get last-used serial number in directory from 'bottom' .aprx file
-    serial_name_last, _ = aprx.replace('.aprx', '').split('_')
-    _, serial_last = serial_name_last[:3], serial_name_last[3:]
-    # get project details and layout element name
-    serial_name, title = filename.replace('.aprx', '').split('_')
-    _, serial_old = serial_name[:3], serial_name[3:]
+    serial_base, title = aprx.replace('.aprx', '').split('_')
+
+    if option == 'clone':
+        key, title = filename.replace('.aprx', '').split('_')
 
     def _create_project():
+        """Creates/configures a new project per each iteration."""
 
-        aprx = os.path.join(directory, filename)
-        source = aprx if option == 'clone' else rf'{LAYOUTS}\\{template}.aprx'
-        destination = (rf'{directory}\\{serial_new}_{title}.aprx')
+        path = os.path.join(directory, filename)
+        source = path if option == 'clone' else rf'{PROJECT}\\{template}.aprx'
+        destination = rf'{directory}\\{serial}_{title}.aprx'
         shutil.copy(source, destination)
-
         project = arcpy.mp.ArcGISProject(destination)
-        project_new = (f'{serial_new}_{title}')
-        
+
         if option == 'clone':
-            project_old = (f'{serial_old}_{title}')
-            map_ = project.listMaps(project_old)[0]
-            layout = project.listLayouts(project_old)[0]
-            map_.name = project_new
-            layout.name = project_new
-            for element in layout.listElements('TEXT_ELEMENT', '*'):
-                if element.text == serial_old:
-                    element.text = serial_new
-        
+            clone = f'{key}_{title}'
+            map_, layout = change_element_name(project=project, map_name=clone,
+                layout_name=clone, element='TEXT_ELEMENT', old_name=key,
+                new_name=serial)
+
         if option == 'scratch':
-            map_ = project.listMaps('Map')[0]
-            layout = project.listLayouts('Layout')[0]
-            map_.name = project_new
-            layout.name = project_new
-            for element in layout.listElements('TEXT_ELEMENT', '*'):
-                if element.text == 'SERIAL_NUMBER':
-                    element.text = serial_new
+            map_, layout = change_element_name(project=project, map_name='Map',
+                layout_name='Layout', element='TEXT_ELEMENT',
+                old_name='SERIAL', new_name=serial)
+
+        map_.name = f'{serial}_{title}'
+        layout.name = f'{serial}_{title}'
 
         project.save()
 
-    # new projects per incremental serials
-    serial_new = new_serial(serial_last)
+    serial = new_serial(serial_base)
     for _ in range(0, quantity):
         _create_project()
-        serial_new = new_serial(serial_new)
+        serial = new_serial(serial)
 
 ###############################################################################
 
 def archive_project():
-    """Moves projects from previous year to archive folder."""
+    """Moves project folders from previous year to archive folder. Called by
+    the new project decorator.
+    """
 
     import os
     import shutil
@@ -110,8 +106,60 @@ def archive_project():
 
 ###############################################################################
 
+def change_element_name(project, map_name, layout_name, element, old_name,
+    new_name):
+    """Updates the text property of one layout element.
+    ---------------------------------------------------------------------------
+    PARAMETERS:
+    ---------------------------------------------------------------------------
+    project:
+        ArcGIS project object
+    map_name: str
+        map name as it appears in the catalog pane
+    layout_name: str
+        layout name as it appears in the catalog pane
+    element: str
+        type of layout element to rename: GRAPHIC_ELEMENT, LEGEND_ELEMENT,
+        MAPFRAME_ELEMENT, MAPSURROUND_ELEMENT, PICTURE_ELEMENT, TEXT_ELEMENT
+    old_name: str
+        existing element name
+    new_name: str
+        new element name
+    ---------------------------------------------------------------------------
+    RETURNS:
+    ---------------------------------------------------------------------------
+    map_:
+        ArcGIS map object
+    layout:
+        ArcGIS layout object
+    ---------------------------------------------------------------------------
+    USAGE:
+    ---------------------------------------------------------------------------
+    import arcpy
+    from pyxidust.projects import change_element_name
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    # update the 'Draft' text to read 'Revised Draft'
+    change_element_name(project=project, map_name='Map', layout_name='Layout',
+        element='TEXT_ELEMENT', old_name='Draft', new_name='Revised Draft')
+    """
+
+    import arcpy
+
+    map_ = project.listMaps(map_name)[0]
+    layout = project.listLayouts(layout_name)[0]
+    for item in layout.listElements(element, old_name):
+        item.text = new_name
+
+    project.save()
+
+    return map_, layout
+
+###############################################################################
+
 def create_folder(folder_name, map_name, template):
-    """Creates folder structure and clones pro project template."""
+    """Creates a new project directory and clones the appropriate template.
+    Called by the new project decorator.
+    """
 
     import os
     import shutil
@@ -128,18 +176,18 @@ def create_folder(folder_name, map_name, template):
 ###############################################################################
 
 def create_index(directory):
-    """Joins file metadata (name/path/modified) with layers/layouts/maps via a
-    global ID for each .aprx file in the specified directory.
+    """Joins file metadata (name/path/modified) with layer/layout/map names via
+    a global ID for each .aprx file in the specified directory.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
-    directory: path
-        path to a directory containing files with an .aprx extension
+    directory: str
+        path to a root project folder
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
-    from pyxidust.gp import create_index
-    create_index(directory=r'\\folder')
+    from pyxidust.projects import create_index
+    create_index(directory=r'\\')
     """
 
     import arcpy
@@ -206,8 +254,8 @@ def create_index(directory):
 ###############################################################################
 
 def delete_project(directory):
-    """Deletes .aprx file and associated data for workflows that do not require
-    a pro project.
+    """Deletes files/folders generated by ArcGIS PRO for workflows that do not
+    require a project.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
@@ -216,6 +264,7 @@ def delete_project(directory):
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
+    from pyxidust.projects import delete_project
     delete_project(directory=r'\\')
     """
 
@@ -236,19 +285,19 @@ def delete_project(directory):
 ###############################################################################
 
 def get_metadata(extension, directory):
-    """Crawls a directory and returns metadata per a certain file extension.
+    """Returns name/path/modified per a certain file extension in a directory.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     extension: str
-        file extension to search for in the directory
-    directory: path
-        path to a directory containing files of a certain extension
+        file extension to search for
+    directory: str
+        path to a folder to search in
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
-    from pyxidust.gp import get_metadata
-    get_metadata(extension='.jpg', directory=r'\\folder')
+    from pyxidust.projects import get_metadata
+    get_metadata(extension='.aprx', directory=r'\\')
     """
 
     import datetime
@@ -280,7 +329,8 @@ def get_metadata(extension, directory):
 ###############################################################################
 
 def get_serial():
-    """Read/increment counter and return a serial number."""
+    """Returns an incremented serial number from a file. Called by the new
+    project decorator."""
 
     from pyxidust.config import SERIALS, YEAR
 
@@ -355,7 +405,8 @@ def import_map(project, mxd, serial_number=None):
 ###############################################################################
 
 def log_project(description, name, serial):
-    """Writes project information to the catalog."""
+    """Writes project information to the catalog. Called by
+    the new project decorator."""
 
     import getpass
     import time
@@ -426,7 +477,8 @@ def message_window(option, title, message):
 ###############################################################################
 
 def name_elements(directory, map_name, map_serial, name):
-    """Updates map element names with project information."""
+    """Updates map element names with project information. Called by
+    the new project decorator."""
 
     import arcpy
 
@@ -577,7 +629,8 @@ def set_default(project, home, gdb, toolbox):
 ###############################################################################
 
 def validate_project(description, name, template):
-    """Performs data validation of user arguments."""
+    """Performs data validation of user arguments. Called by
+    the new project decorator."""
 
     from sys import exit
     from string import punctuation as SPECIAL

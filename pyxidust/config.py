@@ -1,34 +1,43 @@
 # Pyxidust: geoprocessing/lidar/project tools for ESRI ArcGIS PRO software
 # Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
+"""..."""
 ###############################################################################
 
 import os
 import time
 
-# get year to construct serials
+# base for serial numbers
 YEAR = int(time.strftime('%Y', time.localtime()))
 
-# get working folder path; all references are built from ROOT
-ROOT = os.path.normpath(os.getcwd())
+# core folder structure
+ROOT = rf'{os.path.normpath(os.getcwd())}\\pyxidust\\pyxidust'
 
 ###############################################################################
 # FOLDER PATHS:
 ###############################################################################
 
-ARCHIVE = (f'{ROOT}\\archive')
-PROJECTS = (f'{ROOT}\\projects')
-TEMPLATES = (f'{ROOT}\\templates')
-LAYOUTS = (f'{ROOT}\\templates\\newproject\\templates')
+# core folders
+ARCHIVE = f'{ROOT}\\archive'
+METADATA = f'{ROOT}\\metadata'
+MISC = f'{ROOT}\\misc'
+PROJECTS = f'{ROOT}\\projects'
+SCRIPTS = f'{ROOT}\\scripts'
+TEMPLATES = f'{ROOT}\\templates'
+TEST = f'{ROOT}\\test'
+
+# template folders
+LIDAR = f'{TEMPLATES}\\lidar'
+PROJECT = f'{TEMPLATES}\\project'
 
 ###############################################################################
 # FILE PATHS:
 ###############################################################################
 
-CATALOG = (f'{ROOT}\\files\\catalog.csv')
-SERIALS = (f'{ROOT}\\files\\serials.txt')
+CATALOG = f'{MISC}\\catalog.csv'
+SERIALS = f'{MISC}\\serials.txt'
 
 ###############################################################################
-# CONSTANTS:
+# MISC:
 ###############################################################################
 
 # default files/folders created by ArcGIS PRO new projects

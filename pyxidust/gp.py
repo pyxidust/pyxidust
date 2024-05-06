@@ -1,6 +1,6 @@
 # Pyxidust: geoprocessing/lidar/project tools for ESRI ArcGIS PRO software
 # Copyright (C) 2024  Gabriel Peck  pyxidust@pm.me
-"""..."""
+"""Geoprocessing pipeline tools and workflow automation utilities."""
 ###############################################################################
 
 def add_data(project, map_name, option, layers=None, layer_index=None,
@@ -27,7 +27,7 @@ def add_data(project, map_name, option, layers=None, layer_index=None,
     # option 1: add shapefile to an indexed position in the table of contents
     ---------------------------------------------------------------------------
     # layers: path to a shapefile on disk
-    # layer_index: integer value for intended layer placement in relation to 
+    # layer_index: integer value for intended layer placement in relation to
       existing layers in table of contents; use 0 for top, or 1, 2, ...
     add_data(project=project, map_name='Map', option=1, layers=r'\\.shp',
         layer_index=3)
@@ -54,7 +54,7 @@ def add_data(project, map_name, option, layers=None, layer_index=None,
     # layers: path to a layer file on disk
     # layer_index: integer value representing position of existing group layer
       in the table of contents
-    add_data(project=project, map_name='Map', option=5, layers=r'\\.lyrx', 
+    add_data(project=project, map_name='Map', option=5, layers=r'\\.lyrx',
         layer_index=0)
     """
 
@@ -174,15 +174,26 @@ def clear_gdb(gdb):
     features = arcpy.ListFeatureClasses()
     rasters = arcpy.ListRasters()
     tables = arcpy.ListTables()
-    contents = features + rasters + tables
 
-    Delete(in_data=contents)
+    try:
+        Delete(in_data=features)
+    except Exception as error:
+        print(error)
+
+    try:
+        Delete(in_data=rasters)
+    except Exception as error:
+        print(error)
+
+    try:
+        Delete(in_data=tables)
+    except Exception as error:
+        print(error)
 
 ###############################################################################
 
 def csv_to_features(input_file, output_features, projection, event_data):
-    """Converts X/Y data in a .csv file to ArcGIS features and removes
-    duplicate coordinate pairs.
+    """Converts X/Y data in a .csv file to features.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
@@ -200,7 +211,7 @@ def csv_to_features(input_file, output_features, projection, event_data):
     ---------------------------------------------------------------------------
     from pyxidust.gp import csv_to_features
     csv_to_features(input_file=r'\\.csv', output_features=r'\\.shp',
-        projection=r'\\.prj', event_data='event_1')
+        projection=r'\\.prj', event_data=r'\\event_1')
     """
 
     import arcpy
@@ -223,7 +234,7 @@ def csv_to_gdb(csv, gdb, table):
     PARAMETERS:
     ---------------------------------------------------------------------------
     csv: str
-        path to a .csv file
+        path to an input .csv file
     gdb: str
         path to an ArcGIS geodatabase (output workspace)
     table: str
@@ -278,7 +289,6 @@ def cubic_volume(original, current, gdb, polygons):
     # full path to input polygons
     boundaries = rf'{gdb}\\{polygons}'
 
-    # enable list methods
     arcpy.env.workspace = gdb
     arcpy.CheckOutExtension('SPATIAL')
     arcpy.CheckOutExtension('3D')
@@ -432,15 +442,14 @@ def excel_to_gdb(workbook, gdb, table, sheet=None):
 ###############################################################################
 
 def explode_geometry(dataset, gdb):
-    """Exports each row of a multipart feature class.
+    """Exports new features for each row in a multipart feature class.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     dataset: str
-        Name of the feature class to explode as it appears in the catalog pane
-        in ArcGIS PRO; feature class must be in the root of the .gdb
+        name of a feature class to be exploded in the root of the geodatabase
     gdb: str
-        path to an ArcGIS geodatabase
+        path to an ArcGIS geodatabase (output workspace)
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
@@ -453,18 +462,14 @@ def explode_geometry(dataset, gdb):
     from arcpy.analysis import Select
     from arcpy.da import SearchCursor
 
-    # construct feature class path
     fc = (rf'{gdb}\\{dataset}')
     # get feature class properties
     fields = arcpy.Describe(fc).OIDFieldName
-    # infinite generator
     counter = get_suffix(string='')
-    # loop rows in feature class
+
     with SearchCursor(fc, fields) as cursor:
         for row in cursor:
-            # get unique letters for each row
             letter = next(counter)
-            # construct filename/path for exports
             explode = (rf'{gdb}\\Explode_{letter}')
             # SQL 'where' clause
             clause = '{0} = {1}'.format(Delimiter(fc, fields), row[0])
@@ -474,24 +479,30 @@ def explode_geometry(dataset, gdb):
 ###############################################################################
 
 def features_to_csv(input_features, output_file, option, gdb=None):
-    """Converts point/polygon features to a .csv file.
+    """Extracts coordinate pairs from point/polygon features.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     input_features: str
         path to ArcGIS point/polygon features
     output_file: str
-        path to an output .csv file to store coordinate data
+        path to an output .csv file to store coordinate pairs
     option: str
-        'point' - input features are point geometry
-        'polygon' - input features are polygon geometry
+        'point' - input feature class contains point geometry; expected field
+        format: 'id', 'x', 'y'
+        'polygon' - input shapefile contains polygon geometry
     gdb: str
-        path to an ArcGIS geodatabase (output workspace) if option == 'point'
+        path to an ArcGIS geodatabase (output workspace)
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
-    features_to_csv(input_features=r'Shapefile.shp',
-        output_file=r'CSV.csv', option='polygon')
+    from pyxidust.gp import features_to_csv
+    # point input features
+    features_to_csv(input_features=r'\\', output_file=r'\\.csv',
+        option='point', gdb=r'\\.gdb')
+    # polygon input features
+    features_to_csv(input_features=r'\\.shp', output_file=r'\\.csv',
+        option='polygon')
     """
 
     import json
@@ -509,6 +520,7 @@ def features_to_csv(input_features, output_file, option, gdb=None):
     arcpy.env.overwriteOutput = True
 
     if option == 'point':
+
         os.chdir(gdb)
         arcpy.env.workspace = os.getcwd()
         ExportXYv(Input_Feature_Class=input_features,
@@ -521,10 +533,13 @@ def features_to_csv(input_features, output_file, option, gdb=None):
         os.remove(csv_temp)
 
     if option == 'polygon':
+
         FeaturesToJSON(in_features=input_features,
             out_json_file=json_temp, format_json='FORMATTED')
+
         with open(json_temp, 'r') as file:
             json_file = json.load(file)
+
         os.remove(json_temp)
         df_flat = json_normalize(data=json_file, record_path='features',
             meta=['geometry', 'rings'], errors='ignore')
@@ -532,32 +547,32 @@ def features_to_csv(input_features, output_file, option, gdb=None):
         df_clean = df_flat[GEO]
         df_exploded = df_clean.explode(GEO).explode(GEO)
         json_csv = df_exploded.to_csv(path_or_buf=json_temp, index=False)
+
         with open(json_temp, 'r') as file:
             text = file.read().replace('[', '').replace(']', '')
             text = text.replace('"', '').replace(',geometry.rings', '')
             text = text.replace(' ', '')
+
         with open(output_file, 'w+') as file:
             file.write('id,x,y')
             file.writelines(text)
+
         os.remove(json_temp)
 
 ###############################################################################
 
 def get_suffix(string):
-    """Infinite generator that yields unique letter combinations for file
-    operations that do not support numbers.
+    """Appends a unique letter combination to the string per each iteration.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     string: str
-        Base string that will have a unique letter combination appended;
-        yields a unique filename combination with each iteration; include
-        an underbar for readability if desired
-        (A, B, ..., _AA, _BB, ...)
+        text value to be appended
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     from pyxidust.gp import get_suffix
+    # create generator to yield values
     generator = get_suffix(string='filename_')
     next(generator) -> 'filename_A'
     next(generator) -> 'filename_B'
@@ -566,9 +581,10 @@ def get_suffix(string):
     from string import ascii_uppercase as UPPER
 
     loops = 1
+
     while loops > 0:
         for letter in UPPER:
-            text = (f'{string}{letter * loops}')
+            text = f'{string}{letter * loops}'
             yield text
             if letter.startswith('Z'):
                 loops += 1
@@ -577,8 +593,7 @@ def get_suffix(string):
 
 def image_to_features(image, classes, identifier, query, projection, directory,
     area=None):
-    """Clips a georeferenced raster to a new extent based on parameters and
-    outputs the new clipped raster and polygon features.
+    """Extracts polygon features from a georeferenced image.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
@@ -588,40 +603,37 @@ def image_to_features(image, classes, identifier, query, projection, directory,
         as it blows out the RGB color values from the original image
     classes: int
         number of raster cell groups for the Iso Cluster Unsupervised
-        Classification tool; function can be run multiple times to produce the
-        desired results by tweaking this value combined with the query parameter
+        Classification tool; function can be run multiple times to produce
+        the desired results by tweaking the classes/query parameters
     identifier: str
-        value will be appended to the end of all file names to tie results
-        together from multiple function calls
+        text value that acts as a global key per each function call
     query: str
         valid SQL 'where clause' that acts as a threshold in the Extract By
-        Attributes tool to limit the amount of features that will be processed
-        in the second part of the function; can also be used to clean data of
+        Attributes tool to filter the number of features processed or remove
         undesired values
     projection: str
-        path to an ArcGIS projection file of the desired output coordinate
-        reference system
+        path to an ArcGIS projection file to set coordinate system of input
     directory: str
-        path to an output folder to store the function results
+        path to an output folder to store intermediary data
     area: str
         valid SQL 'where clause' that acts as a threshold in the Select tool
-        to remove small polygons produced by rasterization/analysis which are
-        not part of the data
+        to remove small polygons produced by rasterization/analysis
     ---------------------------------------------------------------------------
     RETURNS:
     ---------------------------------------------------------------------------
-    image
+    clip:
         clipped image within the mask
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     from pyxidust.gp import image_to_features
-    clip = image_to_features(image='\\Image.tif', classes='4', identifier='A',
-        query='VALUE = 1 OR VALUE = 2', projection='\\.prj', directory='\\Folder',
+    # example with 4 distinct colors/polygons in the input image
+    clip_1 = image_to_features(image='\\.tif', classes='4', identifier='A',
+        query='VALUE = 1 OR VALUE = 2', projection='\\.prj', directory='\\',
         area='AREA >= 100')
-    # for sequential function calls feed the returned 'clip' as the image value
-    clip_2 = image_to_features(image=clip, classes='6', identifier='B',
-        query='VALUE = 3', projection='\\.prj', directory='\\Folder',
+    # when classes > 1 feed the returned 'clip' to the image value
+    clip_2 = image_to_features(image=clip_1, classes='6', identifier='B',
+        query='VALUE = 3', projection='\\.prj', directory='\\',
         area='AREA >= 100')
     """
 
@@ -645,19 +657,19 @@ def image_to_features(image, classes, identifier, query, projection, directory,
     extract.save(rf'{directory}\\extract_{identifier}')
 
     # convert extracted raster to polygons for use as mask
-    mask = (rf'{directory}\\mask_{identifier}')
+    mask = rf'{directory}\\mask_{identifier}'
     RasterToPolygon(extract, mask, 'SIMPLIFY', '', 'SINGLE_OUTER_PART')
 
     # use area query to remove small polygons
     if area is not None:
         CalculateGeometryAttributes(in_features=mask,
             geometry_property='AREA AREA', area_unit='SQUARE_FEET_US')
-        clean = (rf'{directory}\\clean_{identifier}')
+        clean = rf'{directory}\\clean_{identifier}'
         Select(mask, clean, area)
 
     # clip image using outer boundary as mask
     extract = ExtractByMask(image, clean)
-    clip = (rf'{directory}\\clip_{identifier.lower()}')
+    clip = rf'{directory}\\clip_{identifier.lower()}'
     extract.save(clip)
 
     arcpy.CheckInExtension('SPATIAL')
@@ -666,8 +678,146 @@ def image_to_features(image, classes, identifier, query, projection, directory,
 
 ###############################################################################
 
+def increment_field(dataset, field_name, field_type, counter):
+    """Adds a sequential range of numbers to an existing field in a dataset.
+    ---------------------------------------------------------------------------
+    PARAMETERS:
+    ---------------------------------------------------------------------------
+    dataset: str
+        path to features with an existing field to increment
+    field_name: str
+        field name to be incremented
+    field_type: str
+        field type to be incremented: 'float', 'integer', 'text'
+    counter: int
+        starting position of numbering scheme
+    ---------------------------------------------------------------------------
+    USAGE:
+    ---------------------------------------------------------------------------
+    from pyxidust.gp import increment_field
+    increment_field(dataset=r'\\.shp', field_name='ID', field_type='text',
+        counter=1)
+    """
+
+    from arcpy.da import UpdateCursor
+
+    with UpdateCursor(dataset, [field_name]) as cursor:
+        for row in cursor:
+            if field_type == 'float':
+                row[0] = float(counter)
+            if field_type == 'integer':
+                row[0] = counter
+            if field_type == 'text':
+                row[0] = str(counter)
+            cursor.updateRow(row)
+            counter += 1
+
+###############################################################################
+
+def layout_scale(project, map_name, layout_name, frame_name, layer_index,
+    adjust):
+    """Adjusts the layout scale to the extent of a layer.
+    ---------------------------------------------------------------------------
+    PARAMETERS:
+    ---------------------------------------------------------------------------
+    project:
+        ArcGIS project object
+    map_name: str
+        map name as it appears in the catalog pane
+    layout_name: str
+        layout name as it appears in the catalog pane
+    frame_name: str
+        frame name as it appears in the layout table of contents
+    layer_index: int
+        index position of a layer in the map table of contents used to set the
+        layout scale
+    adjust: float
+        value used to fine-tune the scale set by the layer_index parameter;
+        adjust < 1.0 decreases scale and adjust > 1.0 increases scale
+    ---------------------------------------------------------------------------
+    RETURNS:
+    ---------------------------------------------------------------------------
+    extent:
+        ArcGIS extent object
+    scale: str
+        map reference scale set by layer_index/adjust parameters
+    ---------------------------------------------------------------------------
+    USAGE:
+    ---------------------------------------------------------------------------
+    import arcpy
+    from pyxidust.gp import layout_scale
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    # set layout extent to layer[1]
+    extent, scale = layout_scale(project=project, map_name='Map',
+        layout_name='Layout', frame_name='Map Frame', layer_index=1,
+        adjust=1.0)
+    # set layout extent to layer[3] and fine-tune scale
+    extent, scale = layout_scale(project=project, map_name='Map',
+        layout_name='Layout', frame_name='Map Frame', layer_index=3,
+        adjust=0.9)
+    """
+
+    import arcpy
+
+    map_ = project.listMaps(map_name)[0]
+    layout = project.listLayouts(layout_name)[0]
+    frame = layout.listElements('MAPFRAME_ELEMENT', frame_name)[0]
+    layer = map_.listLayers()[layer_index]
+
+    extent = frame.getLayerExtent(layer, True)
+    frame.camera.setExtent(extent)
+    frame.camera.scale *= adjust
+    arcpy.env.referenceScale = frame.camera.scale
+    map_.referenceScale = arcpy.env.referenceScale
+    scale = map_.referenceScale
+
+    project.save()
+
+    return extent, scale
+
+###############################################################################
+
+def match_values(dataset, key_field, field_map, update_field, update_value):
+    """Updates a text field value if a match is found in the field map.
+    ---------------------------------------------------------------------------
+    PARAMETERS:
+    ---------------------------------------------------------------------------
+    dataset: str
+        path to features with an existing key and update field
+    key_field: [str]
+        list containing one string field name to be used as a key in matching
+    field_map: [str, str, ...]
+        list of string values to match to the key field
+    update_field: [str]
+        list containing one string field name to be populated with the update
+        value when a matching value is found
+    update_value: str
+        value to be populated in the update field when a match is found
+    ---------------------------------------------------------------------------
+    USAGE:
+    ---------------------------------------------------------------------------
+    from pyxidust.gp import match_values
+    search_values = ['21', '44', '3', '87', '35', '77', '92']
+    # populate 'MATCH' with 'Y' when 'ID' values are found in the search values
+    match_values(dataset=r'\\.shp', key_field=['ID'], field_map=search_values,
+        update_field=['MATCH'], update_value='Y')
+    """
+
+    from arcpy.da import UpdateCursor
+
+    field_names = key_field + update_field
+
+    with UpdateCursor(dataset, field_names) as cursor:
+        for row in cursor:
+            for element in field_map:
+                if row[0] == element:
+                    row[1] = update_value
+            cursor.updateRow(row)
+
+###############################################################################
+
 def move_elements(project, layout, element, wildcard):
-    """Moves a selected set of elements off a layout in an ArcGIS PRO project.
+    """Removes elements from a layout in an ArcGIS PRO project.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
@@ -676,19 +826,20 @@ def move_elements(project, layout, element, wildcard):
     layout:
         ArcGIS layout object
     element: str
-        type of layout element to move; options are:
-        GRAPHIC_ELEMENT, LEGEND_ELEMENT, MAPFRAME_ELEMENT,
-        MAPSURROUND_ELEMENT, PICTURE_ELEMENT, TEXT_ELEMENT
+        type of layout element to move: GRAPHIC_ELEMENT, LEGEND_ELEMENT,
+        MAPFRAME_ELEMENT, MAPSURROUND_ELEMENT, PICTURE_ELEMENT, TEXT_ELEMENT
     wildcard: str
-        text value used to restrict the search in the provided ele_type;
-        use '*...' or '...*' to search for elements with a certain name
+        text value used to filter/search elements
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
-    project = arcpy.mp.ArcGISProject(r'.aprx')
-    layout = project.listLayouts('Map')[0]
-    move_elements(project=project, layout=layout,
-        ele_type=GRAPHIC_ELEMENT, wildcard='*Info')
+    import arcpy
+    from pyxidust.gp import move_elements
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    layout = project.listLayouts('Layout')[0]
+    # remove all graphic elements with names that end in 'Info'
+    move_elements(project=project, layout=layout, element='GRAPHIC_ELEMENT',
+        wildcard='*Info')
     """
 
     import arcpy
@@ -703,60 +854,63 @@ def move_elements(project, layout, element, wildcard):
 
 def place_anno(project, map_name, layout_name, frame_name, layer_index,
     adjust, gdb, suffix, layer_name=None):
-    """Sets reference scale from a layer in an ArcGIS PRO project and creates
-    annotation feature classes for all layers with visible labels.
+    """Creates annotation feature classes from all layers with visible labels.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     project:
         ArcGIS project object
     map_name: str
-        Map name as it appears in the catalog pane (default is 'Map')
+        map name as it appears in the catalog pane
     layout_name: str
-        Layout name as it appears in the catalog pane (default is 'Layout')
+        layout name as it appears in the catalog pane
     frame_name: str
-        Frame name as it appears in the layout TOC (default is 'Map Frame')
+        frame name as it appears in the layout table of contents
     layer_index: int
-        Index position of a layer in the map TOC layer stack (0, 1, ...)
+        index position of a layer in the map table of contents used to set the
+        output annotation scale
     adjust: float
-        value used to fine-tune layout scale; value will be multiplied by the
-        map frame camera scale; use a value less than 1 to decrease scale and a
-        value more than 1 to increase scale (0.7, 1.2)
+        value used to fine-tune the scale set by the layer_index parameter;
+        adjust < 1.0 decreases scale and adjust > 1.0 increases scale
     gdb: str
         path to an ArcGIS geodatabase (output workspace)
     suffix: str
         letter added to all new annotation feature class names
     layer_name: str
-        layer name as it appears in the table of contents (TOC); if a value
-        is provided for this argument only the named layer will have
-        annotations created
+        layer name as it appears in the map table of contents; if an argument
+        is provided for this parameter, only that layer will have output labels
     ---------------------------------------------------------------------------
     RETURNS:
     ---------------------------------------------------------------------------
     extent:
         ArcGIS extent object
-    scale:
-        ArcGIS environment/map/camera scale used as conversion scale for anno
+    scale: str
+        map reference scale set by layer_index/adjust parameters
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     import arcpy
-    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    # returns extent, scale; unpack or call without variables
-    extent,scale = place_anno(project=project_, map_name='Map',
-        layout_name='Layout', frame_name='Map Frame', layer_index=0,
-        adjust=1.1, gdb=r'\\.gdb', suffix='A')
+    from pyxidust.gp import place_anno
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    # create annotation for all visible layers
+    extent, scale = place_anno(project=project, map_name='Map',
+        layout_name='Layout', frame_name='Map Frame', layer_index=1,
+        adjust=1.0, gdb=r'\\.gdb', suffix='A')
+    # create annotation for 'Points' layer only and fine-tune scale
+    extent, scale = place_anno(project=project, map_name='Map',
+        layout_name='Layout', frame_name='Map Frame', layer_index=3,
+        adjust=0.9, gdb=r'\\.gdb', suffix='B', layer_name='Points')
     """
 
     import arcpy
     from arcpy.cartography import ConvertLabelsToAnnotation
-    
+
     project = project
     map_ = project.listMaps(map_name)[0]
     layout = project.listLayouts(layout_name)[0]
     frame = layout.listElements('MAPFRAME_ELEMENT', frame_name)[0]
     layer = map_.listLayers()[layer_index]
-    
+
     extent = frame.getLayerExtent(layer, True)
     frame.camera.setExtent(extent)
     frame.camera.scale *= adjust
@@ -765,61 +919,59 @@ def place_anno(project, map_name, layout_name, frame_name, layer_index,
     scale = map_.referenceScale
 
     project.save()
-    
+
     if layer_name is None:
         ConvertLabelsToAnnotation(input_map=map_, conversion_scale=scale,
             output_geodatabase=gdb, anno_suffix=suffix, extent=extent,
             generate_unplaced='GENERATE_UNPLACED')
-    
+
     if layer_name is not None:
         ConvertLabelsToAnnotation(input_map=map_, conversion_scale=scale,
             output_geodatabase=gdb, anno_suffix=suffix, extent=extent,
             generate_unplaced='GENERATE_UNPLACED', which_layers='SINGLE_LAYER',
             single_layer=layer_name)
-    
+
     return extent, scale
 
 ###############################################################################
 
-def plot_csv(project, map_name, csv, projection, output, event_data, x_name, y_name,
-    z_name=None):
-    """Converts X/Y/Z coordinates in a .csv file to a shapefile and adds it to
-    a map in an ArcGIS PRO project.
+def plot_csv(project, map_name, csv, projection, shapefile, event_data, x_name,
+    y_name, z_name=None):
+    """Converts X/Y/Z coordinates in a .csv file to a shapefile.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     project:
         ArcGIS project object
     map_name: str
-        Map name as it appears in the catalog pane (default is 'Map')
-    csv: path
-        Fully-qualified/raw file path to a .csv file containing X/Y data
+        map name as it appears in the catalog pane
+    csv: str
+        path to an input .csv file
     projection: str
         path to an ArcGIS projection file to set coordinate system of input
-    output: path
-        Fully-qualified/raw file path to the desired output shapefile
+    shapefile: str
+        path to an output shapefile
     event_data: str
         path to output event data; exposed to resolve memory conflicts with
         multiple calls to MakeXYEventLayer (ex. unit testing)
     x_name: str
-        Name of field containing X coordinates to import
+        field name mapped to longitude values
     y_name: str
-        Name of field containing Y coordinates to import
+        field name mapped to latitude values
     z_name: str
-        Name of field containing Z coordinates to import
+        field name mapped to elevation values
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     import arcpy
     from pyxidust.gp import plot_csv
-    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    # z-values are optional
-    plot_csv(project=project_, map_name='Map', csv=r'\\.csv', projection=r'\\.prj',
-        output=r'\\.shp', event_data='XYEvent_CSV_Plot', x_name='X', y_name='Y',
-        z_name=None='Z')
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    # output shapefile is added to map
+    plot_csv(project=project, map_name='Map', csv=r'\\.csv',
+        projection=r'\\.prj', shapefile=r'\\.shp', event_data=r'\\event_2',
+        x_name='X', y_name='Y', z_name='Z')
     """
 
-    import os
     import random
     import arcpy
     from string import ascii_uppercase as LETTERS
@@ -840,7 +992,7 @@ def plot_csv(project, map_name, csv, projection, output, event_data, x_name, y_n
 
     # arcobjects results object
     csv_plot = arcpy.management.CopyFeatures(in_features=event_data,
-        out_feature_class=output)
+        out_feature_class=shapefile)
     features_csv = arcpy.management.MakeFeatureLayer(in_features=csv_plot,
         out_layer=plot)
     
@@ -852,46 +1004,48 @@ def plot_csv(project, map_name, csv, projection, output, event_data, x_name, y_n
 
 ###############################################################################
 
-def plot_excel(workbook, project, map_name, projection, shapefile, event_data, 
+def plot_excel(workbook, project, map_name, projection, shapefile, event_data,
     x_name, y_name, z_name=None, sheet=None):
-    """Converts X/Y/Z coordinates in a spreadsheet workbook to a shapefile and
-    adds it to a map in an ArcGIS PRO project.
+    """Converts X/Y/Z coordinates in an Excel workbook to a shapefile.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
-    workbook: path
-        path to a spreadsheet workbook in xls/xlsx/xlsm/xlsb/odf/ods/odt format
+    workbook: str
+        path to an Excel workbook
     project:
         ArcGIS project object
     map_name: str
-        Map name as it appears in the catalog pane (default is 'Map')
+        map name as it appears in the catalog pane
     projection: str
         path to an ArcGIS projection file to set coordinate system of input
-    shapefile: path
-        Fully-qualified/raw file path to the desired output shapefile
+    shapefile: str
+        path to an output shapefile
     event_data: str
         path to output event data; exposed to resolve memory conflicts with
         multiple calls to MakeXYEventLayer (ex. unit testing)
     x_name: str
-        Name of field containing X coordinates to import
+        field name mapped to longitude values
     y_name: str
-        Name of field containing Y coordinates to import
+        field name mapped to latitude values
     z_name: str
-        Name of field containing Z coordinates to import
+        field name mapped to elevation values
     sheet: str
-        individual spreadsheet name; used if the sheet to be converted is not
-        the first sheet in the workbook
+        spreadsheet name if the sheet to be converted is not the first sheet
+        in the workbook
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     import arcpy
     from pyxidust.gp import plot_excel
-    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    # z-values and sheet name are optional
-    plot_excel(workbook=r'\\.xlsx', project=project_, map_name='Map',
-        projection=r'\\.prj', shapefile=r'\\.shp', event_data='XYEvent_PlotExcel', 
-        x_name='X', y_name='Y', z_name='Z',
-        sheet='Sheet1')
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    # using the first workbook sheet and Z values
+    plot_excel(workbook=r'\\.xlsx', project=project, map_name='Map',
+        projection=r'\\.prj', shapefile=r'\\.shp', event_data=r'\\event_3',
+        x_name='X', y_name='Y', z_name='Z')
+    # using the third workbook sheet without Z values
+    plot_excel(workbook=r'\\.xlsx', project=project, map_name='Map',
+        projection=r'\\.prj', shapefile=r'\\.shp', event_data=r'\\event_3',
+        x_name='X', y_name='Y', sheet='Sheet 3')
     """
     
     import os
@@ -903,7 +1057,7 @@ def plot_excel(workbook, project, map_name, projection, shapefile, event_data,
         df = DataFrame(data=read_excel(io=workbook, engine='openpyxl'))
         df.to_csv(path_or_buf=plot_excel)
         plot_csv(project=project, map_name=map_name, csv=plot_excel,
-            projection=projection, output=shapefile, event_data=event_data,
+            projection=projection, shapefile=shapefile, event_data=event_data,
             x_name=x_name, y_name=y_name)
 
     elif sheet is not None and z_name is None:
@@ -911,14 +1065,14 @@ def plot_excel(workbook, project, map_name, projection, shapefile, event_data,
             engine='openpyxl'))
         df.to_csv(path_or_buf=plot_excel)
         plot_csv(project=project, map_name=map_name, csv=plot_excel,
-            projection=projection, output=shapefile, event_data=event_data,
+            projection=projection, shapefile=shapefile, event_data=event_data,
             x_name=x_name, y_name=y_name)
 
     elif sheet is None and z_name is not None:
         df = DataFrame(data=read_excel(io=workbook, engine='openpyxl'))
         df.to_csv(path_or_buf=plot_excel)
         plot_csv(project=project, map_name=map_name, csv=plot_excel,
-            projection=projection, output=shapefile, event_data=event_data,
+            projection=projection, shapefile=shapefile, event_data=event_data,
             x_name=x_name, y_name=y_name, z_name=z_name)
 
     elif sheet is not None and z_name is not None:
@@ -926,7 +1080,7 @@ def plot_excel(workbook, project, map_name, projection, shapefile, event_data,
             engine='openpyxl'))
         df.to_csv(path_or_buf=plot_excel)
         plot_csv(project=project, map_name=map_name, csv=plot_excel,
-            projection=projection, output=shapefile, event_data=event_data,
+            projection=projection, shapefile=shapefile, event_data=event_data,
             x_name=x_name, y_name=y_name, z_name=z_name)
 
     os.remove(plot_excel)
@@ -935,7 +1089,6 @@ def plot_excel(workbook, project, map_name, projection, shapefile, event_data,
 
 def print_info(project):
     """Prints map/layout/layer names and data sources in an ArcGIS PRO project.
-    Useful for troublesome projects that will not open due to memory issues.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
@@ -945,8 +1098,10 @@ def print_info(project):
     USAGE:
     ---------------------------------------------------------------------------
     import arcpy
-    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    print_info(project=project_)
+    from pyxidust.gp import print_info
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    # useful for projects that will not open due to memory limitations
+    print_info(project=project)
     """
     
     import arcpy
@@ -962,20 +1117,21 @@ def print_info(project):
 ###############################################################################
 
 def print_layers(project, map_name):
-    """Prints the properties of all layers in a map in an ArcGIS PRO project.
+    """Prints all layer properties in an ArcGIS PRO project.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     project:
         ArcGIS project object
     map_name: str
-        Map name as it appears in the catalog pane (default is 'Map')
+        map name as it appears in the catalog pane
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     import arcpy
-    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    print_layers(project=project_, map_name='Map')
+    from pyxidust.gp import print_layers
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    print_layers(project=project, map_name='Map')
     """
     
     import arcpy
@@ -1157,14 +1313,15 @@ def remove_layers(project, map_, layers):
     map_:
         ArcGIS map object
     layers: set
-        Layer names in the table of contents to remove from the map
+        layer names to remove as they appear in the map table of contents
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     import arcpy
-    project = arcpy.mp.ArcGISProject(path)
+    from pyxidust.gp import remove_layers
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
     map_ = project.listMaps('Map')[0]
-    remove_layers(project=project, map_=map_, layers={'Hydro', 'Points'})
+    remove_layers(project=project, map_=map_, layers={'Points', 'Polygons'})
     """
 
     import arcpy
@@ -1179,28 +1336,31 @@ def remove_layers(project, map_, layers):
 
 ###############################################################################
 
-def visible_layers(project, map_name, layer_index, option=None):
-    """Turns on/off layers in a map in an ArcGIS PRO project if the layer index
-    position is found in the input list.
+def visible_layers(project, map_name, layer_index, option):
+    """Turns on/off layers in an ArcGIS PRO project.
     ---------------------------------------------------------------------------
     PARAMETERS:
     ---------------------------------------------------------------------------
     project:
         ArcGIS project object
     map_name: str
-        Map name as it appears in the catalog pane (default is 'Map')
+        map name as it appears in the catalog pane
     layer_index: list[int]
-        List of integers representing index positions of layers in the map
-        table of contents layer stack to turn off
+        list of integers corresponding to map layer indexes
     option: str
-        if option == 'on' layers that are off in the map will be visible;
-        if option == 'off' layers that are on in the map will not be visible
+        use option 'on' or 'off' to control layer visibility
     ---------------------------------------------------------------------------
     USAGE:
     ---------------------------------------------------------------------------
     import arcpy
-    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    visible_layers(project=project_, map_name='Map', layer_index=[0,1,2])
+    from pyxidust.gp import visible_layers
+    project = arcpy.mp.ArcGISProject(r'\\.aprx')
+    # turn on one layer
+    visible_layers(project=project, map_name='Map', layer_index=[2],
+        option='on')
+    # turn off multiple layers
+    visible_layers(project=project, map_name='Map', layer_index=[3, 4, 5],
+        option='off')
     """
 
     import arcpy
@@ -1212,56 +1372,7 @@ def visible_layers(project, map_name, layer_index, option=None):
         if layer.isFeatureLayer:
             if option == 'on':
                 layer.visible = True
-            else:
+            if option == 'off':
                 layer.visible = False
 
     project.save()
-
-###############################################################################
-
-def zoom_to(project, map_name, layout_name, frame_name, layer_index, adjust):
-    """Sets reference scale from a layer in an ArcGIS PRO project and zooms the
-    layout to the layer extent.
-    ---------------------------------------------------------------------------
-    PARAMETERS:
-    ---------------------------------------------------------------------------
-    project:
-        ArcGIS project object
-    map_name: str
-        Map name as it appears in the catalog pane (default is 'Map')
-    layout_name: str
-        Layout name as it appears in the catalog pane (default is 'Layout')
-    frame_name: str
-        Frame name as it appears in the layout TOC (default is 'Map Frame')
-    layer_index: int
-        Index position of a layer in the map TOC layer stack (0, 1, ...)
-    adjust: float
-        value used to fine-tune layout scale; value will be multiplied by the
-        map frame camera scale; use a value less than 1 to decrease scale and a
-        value more than 1 to increase scale (0.7, 1.2)
-    ---------------------------------------------------------------------------
-    USAGE:
-    ---------------------------------------------------------------------------
-    import arcpy
-    project_ = arcpy.mp.ArcGISProject(r'\\.aprx')
-    zoom_to(project=project_, map_name='Map', layout_name='Layout',
-        frame_name='Map Frame', layer_index=0, adjust=1.1)
-    """
-    
-    import arcpy
-    
-    map_ = project.listMaps(map_name)[0]
-    layout = project.listLayouts(layout_name)[0]
-    frame = layout.listElements('MAPFRAME_ELEMENT', frame_name)[0]
-    layer = map_.listLayers()[layer_index]
-    
-    extent = frame.getLayerExtent(layer, True)
-    frame.camera.setExtent(extent)
-    frame.camera.scale *= adjust
-    arcpy.env.referenceScale = frame.camera.scale
-    map_.referenceScale = arcpy.env.referenceScale
-    scale = map_.referenceScale
-
-    project.save()
-    
-    return extent, scale
